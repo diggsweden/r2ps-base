@@ -95,7 +95,7 @@
       <dependency>
         <groupId>org.slf4j</groupId>
         <artifactId>slf4j-api</artifactId>
-        <version>${digg.hash2curve.version}</version>
+        <version>${slf4j.version}</version>
       </dependency>
       <!-- Test -->
       <dependency>

@@ -7,7 +7,7 @@
     <version>0.0.1-SNAPSHOT</version>
   </parent>
   <artifactId>r2ps-server</artifactId>
-  <name>Archetype - r2ps-server</name>
+  <name>DIGG EUDI Wallet :: R2PS :: Server</name>
   <url>http://maven.apache.org</url>
 
   <dependencies>

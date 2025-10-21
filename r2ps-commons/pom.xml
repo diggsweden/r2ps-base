@@ -7,7 +7,7 @@
     <version>0.0.1-SNAPSHOT</version>
   </parent>
   <artifactId>r2ps-commons</artifactId>
-  <name>Archetype - r2ps-commons</name>
+  <name>DIGG EUDI Wallet :: R2PS :: Commons</name>
   <url>http://maven.apache.org</url>
 
   <dependencies>
@@ -33,7 +33,7 @@
     </dependency>
     <dependency>
       <groupId>se.digg.crypto</groupId>
-      <artifactId>opaque</artifactId>
+      <artifactId>opaque-java</artifactId>
     </dependency>
     <dependency>
       <groupId>se.digg.crypto</groupId>
