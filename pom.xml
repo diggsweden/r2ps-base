@@ -35,8 +35,8 @@
     <lombok.version>1.18.42</lombok.version>
     <nimbus.version>10.5</nimbus.version>
     <jackson.version>2.19.2</jackson.version>
-    <digg.opaque.version>1.0.2</digg.opaque.version>
-    <digg.hash2curve.version>1.1.1</digg.hash2curve.version>
+    <digg.opaque.version>1.0.2-SNAPSHOT</digg.opaque.version>
+    <digg.hash2curve.version>1.1.1-SNAPSHOT</digg.hash2curve.version>
     <slf4j.version>2.0.17</slf4j.version>
     <junit.jupiter.version>5.12.2</junit.jupiter.version>
     <jakarta.version>3.0.0</jakarta.version>
