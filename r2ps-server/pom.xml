@@ -16,6 +16,24 @@
       <artifactId>r2ps-commons</artifactId>
       <version>${project.version}</version>
     </dependency>
+    <!-- Test dependencies -->
+    <dependency>
+      <groupId>se.digg.wallet</groupId>
+      <artifactId>test-commons</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-simple</artifactId>
+      <scope>test</scope>
+    </dependency>
+
   </dependencies>
 
 </project>

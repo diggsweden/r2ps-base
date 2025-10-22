@@ -6,18 +6,23 @@
     <artifactId>r2ps-base-parent</artifactId>
     <version>0.0.1-SNAPSHOT</version>
   </parent>
-  <artifactId>r2ps-client</artifactId>
-  <name>DIGG EUDI Wallet :: R2PS :: Client</name>
-  <url>http://maven.apache.org</url>
-
+  <artifactId>integration-tests</artifactId>
+  <name>DIGG EUDI Wallet :: R2PS :: Integration tests</name>
 
   <dependencies>
+    <!-- Test dependencies -->
     <dependency>
       <groupId>se.digg.wallet</groupId>
-      <artifactId>r2ps-commons</artifactId>
+      <artifactId>r2ps-client</artifactId>
       <version>${project.version}</version>
+      <scope>test</scope>
     </dependency>
-    <!-- Test dependencies -->
+    <dependency>
+      <groupId>se.digg.wallet</groupId>
+      <artifactId>r2ps-server</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
     <dependency>
       <groupId>se.digg.wallet</groupId>
       <artifactId>test-commons</artifactId>
@@ -34,7 +39,5 @@
       <artifactId>slf4j-simple</artifactId>
       <scope>test</scope>
     </dependency>
-
   </dependencies>
-
 </project>
