@@ -69,7 +69,6 @@ public class OpaqueServiceRequestHandler implements ServiceRequestHandler {
   private final ServerOpaqueProvider opaqueProvider;
   private final ClientPublicKeyRegistry clientPublicKeyRegistry;
   private final List<ServiceTypeHandler> serviceTypeHandlers;
-  private final List<ServiceRequestDispatcher> serviceRequestDispatchers;
   private final ServiceTypeRegistry serviceTypeRegistry;
   private final ServiceExchangeFactory serviceExchangeFactory;
   private final JWSSigningParams serverSigningParams;
@@ -106,7 +105,6 @@ public class OpaqueServiceRequestHandler implements ServiceRequestHandler {
             configuration.getClientRecordRegistry(), configuration.getSessionDuration(),
             configuration.getFianlizeDuration());
     this.clientPublicKeyRegistry = configuration.getClientPublicKeyRegistry();
-    this.serviceRequestDispatchers = configuration.getServiceRequestDispatchers();
     this.serviceTypeRegistry = configuration.getServiceTypeRegistry();
     this.serviceExchangeFactory = new ServiceExchangeFactory();
     this.replayChecker = configuration.getReplayChecker();
@@ -127,27 +125,6 @@ public class OpaqueServiceRequestHandler implements ServiceRequestHandler {
       if (serviceRequest.getContext() == null) {
         throw new ServiceRequestHandlingException("Not context is declared in the service request",
             ErrorCode.ILLEGAL_REQUEST_DATA);
-      }
-      final ServiceRequestDispatcher serviceRequestDispatcher = serviceRequestDispatchers.stream()
-          .filter(dispatcher -> dispatcher.supports(serviceRequest.getContext())).findFirst()
-          .orElse(null);
-      if (serviceRequestDispatcher != null) {
-        log.debug("Request with context {} is dispatched to a service request dispatcher",
-            serviceRequest.getContext());
-        final HttpResponse dispatchResponse =
-            serviceRequestDispatcher.dispatchServiceRequest(serviceRequestJws,
-                serviceRequest.getContext());
-        if (dispatchResponse.responseCode() == 200) {
-          return dispatchResponse.responseData();
-        } else {
-          log.debug("Service request dispatcher returned an error response: {}",
-              dispatchResponse.responseData());
-          ErrorResponse errorResponse =
-              StaticResources.TIME_STAMP_SECONDS_MAPPER.readValue(dispatchResponse.responseData(),
-                  ErrorResponse.class);
-          throw new ServiceRequestHandlingException(errorResponse.getMessage(),
-              ErrorCode.valueOf(errorResponse.getErrorCode()));
-        }
       }
 
       if (replayChecker.isReplay(serviceRequest.getNonce())) {

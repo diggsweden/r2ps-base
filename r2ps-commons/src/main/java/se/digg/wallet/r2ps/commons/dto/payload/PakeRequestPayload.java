@@ -12,6 +12,7 @@ import se.digg.wallet.r2ps.commons.dto.PakeState;
 import se.digg.wallet.r2ps.commons.StaticResources;
 
 import java.io.IOException;
+import java.time.Duration;
 
 /**
  * Represents the payload for a Password Authenticated Key Exchange (PAKE) request. This class
@@ -40,6 +41,10 @@ public class PakeRequestPayload implements ExchangePayload<PakeRequestPayload> {
   /** Optional authorization data required for initial PIN registrations or PIN resets */
   @JsonProperty("authorization")
   private byte[] authorization;
+  @JsonProperty("task")
+  private String task;
+  @JsonProperty("session_duration")
+  private Duration sessionDuration;
   /** The PAKE request data as defined by the PAKE state */
   @JsonProperty("req")
   byte[] requestData;
