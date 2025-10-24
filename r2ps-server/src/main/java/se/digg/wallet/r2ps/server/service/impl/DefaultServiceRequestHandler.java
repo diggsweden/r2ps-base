@@ -9,46 +9,26 @@ import com.nimbusds.jose.crypto.ECDSAVerifier;
 import com.nimbusds.jose.crypto.RSASSAVerifier;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import se.digg.crypto.opaque.crypto.OprfPrivateKey;
-import se.digg.crypto.opaque.dto.RegistrationResponse;
-import se.digg.crypto.opaque.error.ClientAuthenticationException;
-import se.digg.crypto.opaque.error.DeriveKeyPairErrorException;
-import se.digg.crypto.opaque.error.DeserializationException;
-import se.digg.crypto.opaque.error.InvalidInputException;
-import se.digg.wallet.r2ps.commons.dto.HttpResponse;
 import se.digg.wallet.r2ps.commons.dto.EncryptOption;
 import se.digg.wallet.r2ps.commons.dto.ErrorCode;
-import se.digg.wallet.r2ps.commons.dto.ErrorResponse;
 import se.digg.wallet.r2ps.commons.dto.JWEEncryptionParams;
 import se.digg.wallet.r2ps.commons.dto.JWSSigningParams;
-import se.digg.wallet.r2ps.commons.dto.PakeState;
 import se.digg.wallet.r2ps.commons.dto.ServiceRequest;
 import se.digg.wallet.r2ps.commons.dto.ServiceResponse;
 import se.digg.wallet.r2ps.commons.dto.payload.ExchangePayload;
-import se.digg.wallet.r2ps.commons.dto.payload.PakeRequestPayload;
-import se.digg.wallet.r2ps.commons.dto.payload.PakeResponsePayload;
 import se.digg.wallet.r2ps.commons.dto.servicetype.ServiceType;
 import se.digg.wallet.r2ps.commons.dto.servicetype.ServiceTypeRegistry;
-import se.digg.wallet.r2ps.commons.exception.PakeSessionException;
 import se.digg.wallet.r2ps.commons.exception.ServiceRequestHandlingException;
-import se.digg.wallet.r2ps.commons.pake.ECUtils;
 import se.digg.wallet.r2ps.commons.pake.opaque.PakeSessionRegistry;
-import se.digg.wallet.r2ps.server.pake.opaque.EvaluationResponseResult;
-import se.digg.wallet.r2ps.server.pake.opaque.FinalizeResponse;
-import se.digg.wallet.r2ps.server.pake.opaque.ServerOpaqueEntity;
-import se.digg.wallet.r2ps.server.pake.opaque.ServerOpaqueProvider;
 import se.digg.wallet.r2ps.server.pake.opaque.ServerPakeRecord;
 import se.digg.wallet.r2ps.server.service.ClientPublicKeyRecord;
 import se.digg.wallet.r2ps.server.service.ClientPublicKeyRegistry;
 import se.digg.wallet.r2ps.server.service.OpaqueServiceRequestHandlerConfiguration;
 import se.digg.wallet.r2ps.server.service.ReplayChecker;
 import se.digg.wallet.r2ps.commons.utils.ServiceExchangeFactory;
-import se.digg.wallet.r2ps.server.service.ServiceRequestDispatcher;
 import se.digg.wallet.r2ps.server.service.ServiceRequestHandler;
 import se.digg.wallet.r2ps.commons.StaticResources;
 import se.digg.wallet.r2ps.commons.utils.Utils;
-import se.digg.wallet.r2ps.server.service.pinauthz.PinAuthorization;
-import se.digg.wallet.r2ps.server.service.pinauthz.impl.CodeMatchPinAuthorization;
 import se.digg.wallet.r2ps.server.service.servicehandlers.ServiceTypeHandler;
 
 import javax.crypto.spec.SecretKeySpec;
@@ -62,10 +42,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 
-import static se.digg.wallet.r2ps.commons.dto.PakeState.FINALIZE;
-
 @Slf4j
-public class OpaqueServiceRequestHandler implements ServiceRequestHandler {
+public class DefaultServiceRequestHandler implements ServiceRequestHandler {
 
   private final ClientPublicKeyRegistry clientPublicKeyRegistry;
   private final List<ServiceTypeHandler> serviceTypeHandlers;
@@ -81,12 +59,12 @@ public class OpaqueServiceRequestHandler implements ServiceRequestHandler {
   @Setter
   private Duration requestMaxAge = Duration.ofSeconds(30);
 
-  public OpaqueServiceRequestHandler(OpaqueServiceRequestHandlerConfiguration configuration)
+  public DefaultServiceRequestHandler(OpaqueServiceRequestHandlerConfiguration configuration)
       throws JOSEException {
     this.serverSigningParams = new JWSSigningParams(
-        new ECDSASigner((ECPrivateKey) configuration.getServerOpaqueKeyPair().getPrivate()),
+        new ECDSASigner((ECPrivateKey) configuration.getServerKeyPair().getPrivate()),
         configuration.getServerJwsAlgorithm());
-    this.esdhStaticPrivateKey = (ECPrivateKey) configuration.getServerOpaqueKeyPair().getPrivate();
+    this.esdhStaticPrivateKey = (ECPrivateKey) configuration.getServerKeyPair().getPrivate();
     this.encryptionMethod = configuration.getEncryptionMethod() == null ?
         EncryptionMethod.A256GCM :
         configuration.getEncryptionMethod();

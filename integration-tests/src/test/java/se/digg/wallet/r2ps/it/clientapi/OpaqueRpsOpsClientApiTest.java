@@ -38,7 +38,6 @@ import se.digg.wallet.r2ps.it.testimpl.TestConnector;
 import se.digg.wallet.r2ps.it.testimpl.TestHsmServiceHandler;
 import se.digg.wallet.r2ps.it.testimpl.TestReplayChecker;
 import se.digg.wallet.r2ps.server.pake.opaque.ClientRecordRegistry;
-import se.digg.wallet.r2ps.server.pake.opaque.ServerOpaqueProvider;
 import se.digg.wallet.r2ps.server.pake.opaque.ServerPakeRecord;
 import se.digg.wallet.r2ps.server.pake.opaque.impl.FileBackedClientRecordRegistry;
 import se.digg.wallet.r2ps.server.service.ClientPublicKeyRecord;
@@ -46,7 +45,7 @@ import se.digg.wallet.r2ps.server.service.ClientPublicKeyRegistry;
 import se.digg.wallet.r2ps.server.service.OpaqueServiceRequestHandlerConfiguration;
 import se.digg.wallet.r2ps.commons.StaticResources;
 import se.digg.wallet.r2ps.server.service.impl.FileBackedClientPublicKeyRegistry;
-import se.digg.wallet.r2ps.server.service.impl.OpaqueServiceRequestHandler;
+import se.digg.wallet.r2ps.server.service.impl.DefaultServiceRequestHandler;
 import se.digg.wallet.r2ps.client.jws.HSECPkdsSigner;
 import se.digg.wallet.r2ps.client.jws.HSECPkdsVerifier;
 import se.digg.wallet.r2ps.client.jws.RemoteHsmECDSASigner;
@@ -161,27 +160,16 @@ class OpaqueRpsOpsClientApiTest {
     serviceTypeHandlerList.add(
         new SessionServiceHandler(serverPakeSessionRegistry));
 
-    // TODO Reduce configuration based on opaque service handler being added separately and not created by Opaque Service Request Handler
-    // TODO Rename the Opaque Service Request Handler to be neutral to OPAQUE
-
     // Create a service request handler that can process service requests from the client
-    OpaqueServiceRequestHandler opaqueServiceRequestHandler =
-        new OpaqueServiceRequestHandler(OpaqueServiceRequestHandlerConfiguration.builder()
-            .serverIdentity(serverIdentity)
-            .opaqueConfiguration(OpaqueConfiguration.defaultConfiguration())
-            .oprfSeed(oprfSeed)
-            .serverHsmKeyPair(TestCredentials.serverKeyPair)
-            .serverOpaqueKeyPair(TestCredentials.serverOprfKeyPair)
+    DefaultServiceRequestHandler opaqueServiceRequestHandler =
+        new DefaultServiceRequestHandler(OpaqueServiceRequestHandlerConfiguration.builder()
+            .serverKeyPair(TestCredentials.serverOprfKeyPair)
             .serverJwsAlgorithm(JWSAlgorithm.ES256)
             .serverPakeSessionRegistry(serverPakeSessionRegistry)
             .clientPublicKeyRegistry(clientPublicKeyRegistry)
-            .clientRecordRegistry(clientRecordRegistry)
             .serviceTypeRegistry(serviceTypeRegistry)
             .serviceTypeHandlers(serviceTypeHandlerList)
-            .serviceRequestDispatchers(List.of())
             .replayChecker(new TestReplayChecker())
-            .sessionDuration(Duration.ofMinutes(15))
-            .fianlizeDuration(Duration.ofSeconds(5))
             .build());
 
     // Create an HTTP connector that produces service responses using an internal request handler instead of sending them to a server
