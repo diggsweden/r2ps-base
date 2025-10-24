@@ -37,6 +37,8 @@ import se.digg.wallet.r2ps.commons.pake.opaque.PakeSessionRegistry;
 import se.digg.wallet.r2ps.it.testimpl.TestConnector;
 import se.digg.wallet.r2ps.it.testimpl.TestHsmServiceHandler;
 import se.digg.wallet.r2ps.it.testimpl.TestReplayChecker;
+import se.digg.wallet.r2ps.server.pake.opaque.ClientRecordRegistry;
+import se.digg.wallet.r2ps.server.pake.opaque.ServerOpaqueProvider;
 import se.digg.wallet.r2ps.server.pake.opaque.ServerPakeRecord;
 import se.digg.wallet.r2ps.server.pake.opaque.impl.FileBackedClientRecordRegistry;
 import se.digg.wallet.r2ps.server.service.ClientPublicKeyRecord;
@@ -54,6 +56,8 @@ import se.digg.wallet.r2ps.client.jws.pkds.PKDSPublicKey;
 import se.digg.wallet.r2ps.client.jws.pkds.PKDSSuite;
 import se.digg.wallet.r2ps.client.jws.pkds.impl.PrivateKeyPKDSKeyDerivation;
 import se.digg.wallet.r2ps.client.jws.pkds.impl.RemoteHsmPKDSKeyDerivation;
+import se.digg.wallet.r2ps.server.service.pinauthz.impl.CodeMatchPinAuthorization;
+import se.digg.wallet.r2ps.server.service.servicehandlers.OpaqueServiceHandler;
 import se.digg.wallet.r2ps.server.service.servicehandlers.ServiceTypeHandler;
 import se.digg.wallet.r2ps.server.service.servicehandlers.SessionServiceHandler;
 import se.digg.wallet.r2ps.test.data.TestCredentials;
@@ -143,10 +147,22 @@ class OpaqueRpsOpsClientApiTest {
     List<ServiceTypeHandler> serviceTypeHandlerList = new ArrayList<>();
     serviceTypeHandlerList.add(
         new TestHsmServiceHandler(List.of("P-256", "P-384", "P-521"), List.of("hsm")));
-    serviceTypeHandlerList.add(new SessionServiceHandler(serverPakeSessionRegistry));
+
+    ClientRecordRegistry clientRecordRegistry = new FileBackedClientRecordRegistry(null);
 
     final byte[] oprfSeed = OpaqueUtils.random(32);
     log.info("Server OPRFSeed: {}", Hex.toHexString(oprfSeed));
+
+    serviceTypeHandlerList.add(
+        new OpaqueServiceHandler(List.of("hsm", "test"), new CodeMatchPinAuthorization(clientPublicKeyRegistry),
+            OpaqueConfiguration.defaultConfiguration(), serverIdentity, oprfSeed, TestCredentials.serverOprfKeyPair,
+            serverPakeSessionRegistry, clientRecordRegistry , Duration.ofMinutes(15), Duration.ofSeconds(5)));
+
+    serviceTypeHandlerList.add(
+        new SessionServiceHandler(serverPakeSessionRegistry));
+
+    // TODO Reduce configuration based on opaque service handler being added separately and not created by Opaque Service Request Handler
+    // TODO Rename the Opaque Service Request Handler to be neutral to OPAQUE
 
     // Create a service request handler that can process service requests from the client
     OpaqueServiceRequestHandler opaqueServiceRequestHandler =
@@ -159,7 +175,7 @@ class OpaqueRpsOpsClientApiTest {
             .serverJwsAlgorithm(JWSAlgorithm.ES256)
             .serverPakeSessionRegistry(serverPakeSessionRegistry)
             .clientPublicKeyRegistry(clientPublicKeyRegistry)
-            .clientRecordRegistry(new FileBackedClientRecordRegistry(null))
+            .clientRecordRegistry(clientRecordRegistry)
             .serviceTypeRegistry(serviceTypeRegistry)
             .serviceTypeHandlers(serviceTypeHandlerList)
             .serviceRequestDispatchers(List.of())

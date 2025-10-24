@@ -1,6 +1,7 @@
 package se.digg.wallet.r2ps.server.service.servicehandlers;
 
-import com.nimbusds.jose.JOSEException;
+import lombok.Setter;
+import se.digg.crypto.opaque.crypto.OprfPrivateKey;
 import se.digg.crypto.opaque.dto.RegistrationResponse;
 import se.digg.crypto.opaque.error.ClientAuthenticationException;
 import se.digg.crypto.opaque.error.DeriveKeyPairErrorException;
@@ -8,24 +9,29 @@ import se.digg.crypto.opaque.error.DeserializationException;
 import se.digg.crypto.opaque.error.InvalidInputException;
 import se.digg.wallet.r2ps.commons.StaticResources;
 import se.digg.wallet.r2ps.commons.dto.ErrorCode;
-import se.digg.wallet.r2ps.commons.dto.JWEEncryptionParams;
 import se.digg.wallet.r2ps.commons.dto.PakeState;
 import se.digg.wallet.r2ps.commons.dto.ServiceRequest;
-import se.digg.wallet.r2ps.commons.dto.ServiceResponse;
 import se.digg.wallet.r2ps.commons.dto.payload.ExchangePayload;
 import se.digg.wallet.r2ps.commons.dto.payload.PakeRequestPayload;
 import se.digg.wallet.r2ps.commons.dto.payload.PakeResponsePayload;
 import se.digg.wallet.r2ps.commons.dto.servicetype.ServiceType;
 import se.digg.wallet.r2ps.commons.exception.PakeSessionException;
 import se.digg.wallet.r2ps.commons.exception.ServiceRequestHandlingException;
+import se.digg.wallet.r2ps.commons.pake.ECUtils;
+import se.digg.wallet.r2ps.commons.pake.opaque.OpaqueConfiguration;
+import se.digg.wallet.r2ps.commons.pake.opaque.PakeSessionRegistry;
+import se.digg.wallet.r2ps.server.pake.opaque.ClientRecordRegistry;
 import se.digg.wallet.r2ps.server.pake.opaque.EvaluationResponseResult;
 import se.digg.wallet.r2ps.server.pake.opaque.FinalizeResponse;
+import se.digg.wallet.r2ps.server.pake.opaque.ServerOpaqueEntity;
 import se.digg.wallet.r2ps.server.pake.opaque.ServerOpaqueProvider;
 import se.digg.wallet.r2ps.server.pake.opaque.ServerPakeRecord;
 import se.digg.wallet.r2ps.server.service.ClientPublicKeyRecord;
+import se.digg.wallet.r2ps.server.service.pinauthz.PinAuthorization;
 
 import java.io.IOException;
-import java.text.ParseException;
+import java.security.KeyPair;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 
@@ -35,10 +41,33 @@ public class OpaqueServiceHandler implements ServiceTypeHandler {
 
   protected final List<String> supportedContexts;
   private final ServerOpaqueProvider opaqueProvider;
+  private final PinAuthorization pinAuthorization;
 
-  public OpaqueServiceHandler(final List<String> supportedContexts, final ServerOpaqueProvider opaqueProvider) {
+  @Setter
+  private Duration pinChangeMaxSessionAge = Duration.ofSeconds(30);
+
+  public OpaqueServiceHandler(final List<String> supportedContexts, final PinAuthorization pinAuthorization,
+      final ServerOpaqueProvider opaqueProvider) {
     this.supportedContexts = supportedContexts;
     this.opaqueProvider = opaqueProvider;
+    this.pinAuthorization = pinAuthorization;
+  }
+
+  public OpaqueServiceHandler(final List<String> supportedContexts, final PinAuthorization pinAuthorization,
+      OpaqueConfiguration opaqueConfiguration, String serverIdentity, byte[] oprfSeed, KeyPair serverOpaqueKeyPair,
+      PakeSessionRegistry<ServerPakeRecord> pakeSessionRegistry, ClientRecordRegistry clientRecordRegistry,
+      Duration maxSessionDuration, Duration finalizeDuration) {
+    this.pinAuthorization = pinAuthorization;
+    this.supportedContexts = supportedContexts;
+    ServerOpaqueEntity serverOpaqueEntity = ServerOpaqueEntity.builder()
+        .opaqueServer(opaqueConfiguration.getOpaqueServer())
+        .serverIdentity(serverIdentity)
+        .oprfSeed(oprfSeed)
+        .serverOpaquePrivateKey(new OprfPrivateKey(serverOpaqueKeyPair))
+        .serverOpaquePublicKey(
+            ECUtils.serializePublicKey(serverOpaqueKeyPair.getPublic())).build();
+    opaqueProvider = new ServerOpaqueProvider(serverOpaqueEntity, pakeSessionRegistry, clientRecordRegistry,
+        maxSessionDuration, finalizeDuration);
   }
 
   @Override
@@ -53,44 +82,23 @@ public class OpaqueServiceHandler implements ServiceTypeHandler {
       final ServerPakeRecord pakeSession,
       final byte[] decryptedPayload, final ClientPublicKeyRecord clientPublicKeyRecord, final ServiceType serviceType)
       throws ServiceRequestHandlingException {
-    try {
-      switch (serviceType.id()) {
-      case ServiceType.AUTHENTICATE -> {
-        ExchangePayload<?> responsePayload = processOpaqueAuthentication(serviceType, serviceRequest, decryptedPayload);
-      }
-      case ServiceType.PIN_CHANGE, ServiceType.PIN_REGISTRATION -> {
-        ExchangePayload<?> responsePayload = processOpaquePinRegistration(serviceRequest, pakeSession, decryptedPayload,
-            clientPublicKeyRecord, serviceType);
-      }
-      default -> {
-        final ServiceTypeHandler serviceTypeHandler = serviceTypeHandlers.stream()
-            .filter(handler -> handler.supports(serviceType, serviceRequest.getContext()))
-            .findFirst().orElseThrow(() -> new ServiceRequestHandlingException(String.format(
-                "The service type '%s' under context '%s' is not supported by any handler",
-                serviceType.id(), serviceRequest.getContext()), ErrorCode.ACCESS_DENIED));
-        ExchangePayload<?> responsePayload =
-            serviceTypeHandler.processServiceRequest(serviceRequest, pakeSession,
-                decryptedPayload, clientPublicKeyRecord, serviceType);
-
-        // Create the service response
-        ServiceResponse response =
-            ServiceResponse.builder().nonce(serviceRequest.getNonce()).build();
-        return serviceExchangeFactory.createServiceExchangeObject(serviceType, response,
-            responsePayload, serverSigningParams, encryptionParams);
-      }
-      }
+    switch (serviceType.id()) {
+    case ServiceType.AUTHENTICATE -> {
+      return processOpaqueAuthentication(serviceType, serviceRequest, decryptedPayload);
     }
-    catch (ParseException | JOSEException | IOException e) {
-      throw new ServiceRequestHandlingException("Error processing request: " + e.getMessage(), e,
-          ErrorCode.ILLEGAL_REQUEST_DATA);
+    case ServiceType.PIN_CHANGE, ServiceType.PIN_REGISTRATION -> {
+      return processOpaquePinRegistration(serviceRequest, pakeSession, decryptedPayload,
+          clientPublicKeyRecord, serviceType);
     }
-
-    return null;
+    default -> throw new ServiceRequestHandlingException("Unsupported service type: " + serviceType.id(),
+        ErrorCode.ILLEGAL_REQUEST_DATA);
+    }
   }
 
   private ExchangePayload<?> processOpaquePinRegistration(final ServiceRequest serviceRequest,
       final ServerPakeRecord pakeSession, final byte[] decryptedPayload,
-      final ClientPublicKeyRecord clientPublicKeyRecord, final ServiceType serviceType) throws ServiceRequestHandlingException {
+      final ClientPublicKeyRecord clientPublicKeyRecord, final ServiceType serviceType)
+      throws ServiceRequestHandlingException {
 
     try {
       final PakeRequestPayload pakeRequestPayload =
@@ -117,8 +125,6 @@ public class OpaqueServiceHandler implements ServiceTypeHandler {
         }
       }
 
-      PakeResponsePayload responsePayload = null;
-
       final PakeState state = pakeRequestPayload.getState();
       if (state == null) {
         throw new ServiceRequestHandlingException("PAKE request payload has no pake state",
@@ -126,24 +132,23 @@ public class OpaqueServiceHandler implements ServiceTypeHandler {
       }
 
       // Create the response payload
-      switch (state) {
-      case EVALUATE -> {
-        final RegistrationResponse registrationResponse =
-            opaqueProvider.registrationResponse(pakeRequestPayload.getRequestData(),
-                serviceRequest.getKid());
-        responsePayload =
-            PakeResponsePayload.builder().responseData(registrationResponse.getEncoded()).build();
-      }
-      case FINALIZE -> {
-        opaqueProvider.registrationFinalize(serviceRequest.getClientID(), serviceRequest.getKid(),
-            pakeRequestPayload.getRequestData());
-        responsePayload = PakeResponsePayload.builder().message("OK").build();
-      }
-      }
-      return responsePayload;
-    } catch (IOException | DeriveKeyPairErrorException | DeserializationException |
-        JOSEException e) {
-      throw new RuntimeException(e);
+      return switch (state) {
+        case EVALUATE -> {
+          final RegistrationResponse registrationResponse =
+              opaqueProvider.registrationResponse(pakeRequestPayload.getRequestData(),
+                  serviceRequest.getKid());
+          yield PakeResponsePayload.builder().responseData(registrationResponse.getEncoded()).build();
+        }
+        case FINALIZE -> {
+          opaqueProvider.registrationFinalize(serviceRequest.getClientID(), serviceRequest.getKid(),
+              pakeRequestPayload.getRequestData());
+          yield PakeResponsePayload.builder().message("OK").build();
+        }
+      };
+    }
+    catch (IOException | DeriveKeyPairErrorException | DeserializationException e) {
+      throw new ServiceRequestHandlingException("Error processing PIN registration request: " + e.getMessage(), e,
+          ErrorCode.ILLEGAL_REQUEST_DATA);
     }
   }
 
@@ -155,7 +160,6 @@ public class OpaqueServiceHandler implements ServiceTypeHandler {
           StaticResources.TIME_STAMP_SECONDS_MAPPER.readValue(decryptedPayload,
               PakeRequestPayload.class);
 
-
       final PakeState state = pakeRequestPayload.getState();
       if (state == null) {
         throw new ServiceRequestHandlingException("PAKE request payload has no pake state",
@@ -163,7 +167,8 @@ public class OpaqueServiceHandler implements ServiceTypeHandler {
       }
 
       // Create the response payload
-      PakeResponsePayload responsePayload = switch (state) {
+
+      return switch (state) {
         case EVALUATE -> {
           final EvaluationResponseResult evaluationResult =
               opaqueProvider.evaluateAuthRequest(pakeRequestPayload.getRequestData(),
@@ -182,12 +187,11 @@ public class OpaqueServiceHandler implements ServiceTypeHandler {
         }
       };
 
-      return responsePayload;
-
-    } catch (IOException | InvalidInputException | DeriveKeyPairErrorException |
+    }
+    catch (IOException | InvalidInputException | DeriveKeyPairErrorException |
         DeserializationException | ClientAuthenticationException | PakeSessionException e) {
       throw new ServiceRequestHandlingException(
-          "Failed to process service request: " + e.getMessage(), e,
+          "Failed to process authentication request: " + e.getMessage(), e,
           ErrorCode.ILLEGAL_REQUEST_DATA);
     }
   }
