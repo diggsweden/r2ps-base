@@ -15,11 +15,12 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import se.digg.crypto.opaque.OpaqueUtils;
-import se.digg.wallet.r2ps.client.api.RpsOpsClientApi;
+import se.digg.wallet.r2ps.client.api.R2PSClientApi;
 import se.digg.wallet.r2ps.client.api.ServiceExchangeConnector;
 import se.digg.wallet.r2ps.client.api.ServiceResult;
-import se.digg.wallet.r2ps.client.api.impl.OpaqueRpsOpsClientApi;
+import se.digg.wallet.r2ps.client.api.impl.OpaqueR2PSClientApi;
 import se.digg.wallet.r2ps.client.api.impl.OpaqueRpsOpsConfiguration;
+import se.digg.wallet.r2ps.client.pake.opaque.ClientPakeRecord;
 import se.digg.wallet.r2ps.commons.dto.payload.ByteArrayPayload;
 import se.digg.wallet.r2ps.commons.dto.payload.DHRequestPayload;
 import se.digg.wallet.r2ps.commons.dto.payload.HSMParams;
@@ -29,6 +30,7 @@ import se.digg.wallet.r2ps.commons.dto.payload.SignRequestPayload;
 import se.digg.wallet.r2ps.commons.dto.payload.StringPayload;
 import se.digg.wallet.r2ps.commons.dto.servicetype.ServiceType;
 import se.digg.wallet.r2ps.commons.dto.servicetype.ServiceTypeRegistry;
+import se.digg.wallet.r2ps.commons.dto.servicetype.SessionTaskRegistry;
 import se.digg.wallet.r2ps.commons.exception.PakeAuthenticationException;
 import se.digg.wallet.r2ps.commons.pake.ECUtils;
 import se.digg.wallet.r2ps.commons.pake.opaque.InMemoryPakeSessionRegistry;
@@ -71,6 +73,7 @@ import java.security.Signature;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -82,13 +85,15 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Slf4j
-class OpaqueRpsOpsClientApiTest {
+class OpaqueR2PSClientApiTest {
 
-  static RpsOpsClientApi clientApi;
+  static R2PSClientApi clientApi;
   static ServiceTypeRegistry serviceTypeRegistry;
+  static SessionTaskRegistry sessionTaskRegistry;
   static String clientIdentity;
   static String serverIdentity;
   static ClientPublicKeyRegistry clientPublicKeyRegistry;
+  static PakeSessionRegistry<ClientPakeRecord> clientPakeSessionRegistry;
   static String kid;
   static String kidHsm;
 
@@ -105,8 +110,11 @@ class OpaqueRpsOpsClientApiTest {
         ECUtils.serializePublicKey(TestCredentials.walletHsmAccessP256keyPair.getPublic()));
     serviceTypeRegistry = new ServiceTypeRegistry();
 
-    clientApi = new OpaqueRpsOpsClientApi(OpaqueRpsOpsConfiguration.builder()
+    clientPakeSessionRegistry = new InMemoryPakeSessionRegistry<>();
+
+    clientApi = new OpaqueR2PSClientApi(OpaqueRpsOpsConfiguration.builder()
         .clientIdentity(clientIdentity)
+        .clientPakeSessionRegistry(clientPakeSessionRegistry)
         .contextSessionDuration(Duration.ofMinutes(5))
         .serviceExchangeConnector(createTestConnector())
         .serviceTypeRegistry(serviceTypeRegistry)
@@ -147,6 +155,10 @@ class OpaqueRpsOpsClientApiTest {
     serviceTypeHandlerList.add(
         new TestHsmServiceHandler(List.of("P-256", "P-384", "P-521"), List.of("hsm")));
 
+    sessionTaskRegistry = new SessionTaskRegistry();
+    sessionTaskRegistry.registerSessionTask("sign", Duration.ofSeconds(10));
+    sessionTaskRegistry.registerSessionTask("keyop", Duration.ofSeconds(5));
+
     ClientRecordRegistry clientRecordRegistry = new FileBackedClientRecordRegistry(null);
 
     final byte[] oprfSeed = OpaqueUtils.random(32);
@@ -155,7 +167,7 @@ class OpaqueRpsOpsClientApiTest {
     serviceTypeHandlerList.add(
         new OpaqueServiceHandler(List.of("hsm", "test"), new CodeMatchPinAuthorization(clientPublicKeyRegistry),
             OpaqueConfiguration.defaultConfiguration(), serverIdentity, oprfSeed, TestCredentials.serverOprfKeyPair,
-            serverPakeSessionRegistry, clientRecordRegistry , Duration.ofMinutes(15), Duration.ofSeconds(5)));
+            serverPakeSessionRegistry, clientRecordRegistry, sessionTaskRegistry, Duration.ofMinutes(15), Duration.ofSeconds(5)));
 
     serviceTypeHandlerList.add(
         new SessionServiceHandler(serverPakeSessionRegistry));
@@ -285,7 +297,12 @@ class OpaqueRpsOpsClientApiTest {
     clientApi.registerPin("1234", "hsm", "987654321".getBytes());
 
     // Authenticate with the changed PIN
-    final String hsmSessionId = clientApi.createSession("1234", "hsm").getPakeSessionId();
+    final String hsmSessionId = clientApi.createSession("1234", "hsm", "sign", Duration.ofSeconds(30)).getPakeSessionId();
+    final ClientPakeRecord pakeSession = clientPakeSessionRegistry.getPakeSession(hsmSessionId);
+    assertEquals("hsm", pakeSession.getContext());
+    assertEquals("sign", pakeSession.getRequestedSessionTaskId());
+    assertEquals("sign", pakeSession.getSessionTaskId());
+    assertTrue(Instant.now().plus(Duration.ofSeconds(31)).isAfter(pakeSession.getExpirationTime()));
 
     // Create signing keys
     final List<ListKeysResponsePayload.KeyInfo> p256HsmKeyList =

@@ -32,6 +32,9 @@ public class PakeResponsePayload implements ExchangePayload<PakeResponsePayload>
   /** The PAKE session ID assigned by the server */
   @JsonProperty("pake_session_id")
   private String pakeSessionId;
+  /** The session task recognized by the server bound to this pake session ID */
+  @JsonProperty("task")
+  private String task;
   /** PAKE response data as defined by the PAKE state in the request */
   @JsonProperty("resp")
   private byte[] responseData;

@@ -7,7 +7,9 @@ import se.digg.wallet.r2ps.commons.exception.PakeSessionException;
 import se.digg.wallet.r2ps.commons.exception.ServiceRequestException;
 import se.digg.wallet.r2ps.commons.exception.ServiceResponseException;
 
-public interface RpsOpsClientApi {
+import java.time.Duration;
+
+public interface R2PSClientApi {
 
   /**
    * Creates a new session based on the provided PIN and context.
@@ -22,6 +24,21 @@ public interface RpsOpsClientApi {
    *                                     processed
    */
   PakeResponsePayload createSession(String pin, String context)
+      throws PakeSessionException, PakeAuthenticationException, ServiceResponseException;
+
+  /**
+   * Creates a new session based on the provided PIN, context, task, and requested duration.
+   *
+   * @param pin               the personal identification number used to authenticate and establish the session
+   * @param context           the context identifier under which the session is to be created
+   * @param task              the specific task or purpose for which the session is being created
+   * @param requestedDuration the duration for which the session is requested to remain active
+   * @return PakeResponsePayload representing the newly created session information
+   * @throws PakeSessionException        if an error occurs while processing the PAKE session
+   * @throws PakeAuthenticationException if the provided PIN is invalid or authentication fails
+   * @throws ServiceResponseException    if the service response indicates a failure or cannot be processed
+   */
+  PakeResponsePayload createSession(String pin, String context, String task, Duration requestedDuration)
       throws PakeSessionException, PakeAuthenticationException, ServiceResponseException;
 
   /**

@@ -15,6 +15,7 @@ import se.digg.wallet.r2ps.commons.dto.payload.ExchangePayload;
 import se.digg.wallet.r2ps.commons.dto.payload.PakeRequestPayload;
 import se.digg.wallet.r2ps.commons.dto.payload.PakeResponsePayload;
 import se.digg.wallet.r2ps.commons.dto.servicetype.ServiceType;
+import se.digg.wallet.r2ps.commons.dto.servicetype.SessionTaskRegistry;
 import se.digg.wallet.r2ps.commons.exception.PakeSessionException;
 import se.digg.wallet.r2ps.commons.exception.ServiceRequestHandlingException;
 import se.digg.wallet.r2ps.commons.pake.ECUtils;
@@ -42,32 +43,35 @@ public class OpaqueServiceHandler implements ServiceTypeHandler {
   protected final List<String> supportedContexts;
   private final ServerOpaqueProvider opaqueProvider;
   private final PinAuthorization pinAuthorization;
+  private final SessionTaskRegistry sessionTaskRegistry;
 
   @Setter
   private Duration pinChangeMaxSessionAge = Duration.ofSeconds(30);
 
   public OpaqueServiceHandler(final List<String> supportedContexts, final PinAuthorization pinAuthorization,
-      final ServerOpaqueProvider opaqueProvider) {
+      final ServerOpaqueProvider opaqueProvider, final SessionTaskRegistry sessionTaskRegistry) {
     this.supportedContexts = supportedContexts;
     this.opaqueProvider = opaqueProvider;
     this.pinAuthorization = pinAuthorization;
+    this.sessionTaskRegistry = sessionTaskRegistry;
   }
 
   public OpaqueServiceHandler(final List<String> supportedContexts, final PinAuthorization pinAuthorization,
       OpaqueConfiguration opaqueConfiguration, String serverIdentity, byte[] oprfSeed, KeyPair serverOpaqueKeyPair,
       PakeSessionRegistry<ServerPakeRecord> pakeSessionRegistry, ClientRecordRegistry clientRecordRegistry,
+      final SessionTaskRegistry sessionTaskRegistry,
       Duration maxSessionDuration, Duration finalizeDuration) {
     this.pinAuthorization = pinAuthorization;
     this.supportedContexts = supportedContexts;
+    this.sessionTaskRegistry = sessionTaskRegistry;
     ServerOpaqueEntity serverOpaqueEntity = ServerOpaqueEntity.builder()
         .opaqueServer(opaqueConfiguration.getOpaqueServer())
         .serverIdentity(serverIdentity)
         .oprfSeed(oprfSeed)
         .serverOpaquePrivateKey(new OprfPrivateKey(serverOpaqueKeyPair))
-        .serverOpaquePublicKey(
-            ECUtils.serializePublicKey(serverOpaqueKeyPair.getPublic())).build();
+        .serverOpaquePublicKey(ECUtils.serializePublicKey(serverOpaqueKeyPair.getPublic())).build();
     opaqueProvider = new ServerOpaqueProvider(serverOpaqueEntity, pakeSessionRegistry, clientRecordRegistry,
-        maxSessionDuration, finalizeDuration);
+        sessionTaskRegistry, maxSessionDuration, finalizeDuration);
   }
 
   @Override
@@ -152,6 +156,22 @@ public class OpaqueServiceHandler implements ServiceTypeHandler {
     }
   }
 
+  /**
+   * Processes authentication requests using the OPAQUE protocol. Depending on the state of the PAKE (Password
+   * Authenticated Key Exchange) request (EVALUATE or FINALIZE), this method evaluates or finalizes the authentication
+   * process and creates an appropriate response payload.
+   *
+   * @param serviceType the type of the service being requested, used to verify compatibility with the OPAQUE
+   *     authentication process
+   * @param serviceRequest the request object containing client information, key identifiers, and other contextual
+   *     data needed to process the PAKE request
+   * @param decryptedPayload the decrypted payload of the request, expected to contain PAKE-specific data for
+   *     processing authentication
+   * @return an {@code ExchangePayload<?>} containing the processed response data based on the PAKE state, which may
+   *     include evaluation results or finalization details
+   * @throws ServiceRequestHandlingException if an error occurs during the handling of the authentication request,
+   *     such as missing or invalid input data, decryption issues, or other protocol-specific exceptions
+   */
   private ExchangePayload<?> processOpaqueAuthentication(final ServiceType serviceType,
       final ServiceRequest serviceRequest, final byte[] decryptedPayload) throws ServiceRequestHandlingException {
 
@@ -167,7 +187,6 @@ public class OpaqueServiceHandler implements ServiceTypeHandler {
       }
 
       // Create the response payload
-
       return switch (state) {
         case EVALUATE -> {
           final EvaluationResponseResult evaluationResult =
@@ -180,8 +199,11 @@ public class OpaqueServiceHandler implements ServiceTypeHandler {
         case FINALIZE -> {
           FinalizeResponse finalizeResponse =
               opaqueProvider.finalizeAuthRequest(pakeRequestPayload.getRequestData(),
-                  serviceRequest.getPakeSessionId());
-          yield PakeResponsePayload.builder().pakeSessionId(finalizeResponse.pakeSessionId())
+                  serviceRequest.getPakeSessionId(), pakeRequestPayload.getTask(),
+                  pakeRequestPayload.getSessionDuration());
+          yield PakeResponsePayload.builder()
+              .pakeSessionId(finalizeResponse.pakeSessionId())
+              .task(finalizeResponse.sessionTask())
               .sessionExpirationTime(finalizeResponse.sessionExpirationTime()).message("OK")
               .build();
         }

@@ -47,8 +47,6 @@ public class InMemoryPakeSessionRegistry<T extends PakeSessionRegistryRecord>
         "The pakeSessionId is null");
     Objects.requireNonNull(pakeSessionRegistryRecord.getClientId(), "The clientId is null");
     Objects.requireNonNull(pakeSessionRegistryRecord.getKid(), "The key identifier is null");
-    Objects.requireNonNull(pakeSessionRegistryRecord.getExpirationTime(),
-        "The expirationTime is null");
     pakeSessions.put(pakeSessionRegistryRecord.getPakeSessionId(), pakeSessionRegistryRecord);
   }
 
