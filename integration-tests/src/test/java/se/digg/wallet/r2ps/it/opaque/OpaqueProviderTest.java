@@ -36,6 +36,7 @@ import se.digg.wallet.r2ps.client.pake.opaque.ClientOpaqueEntity;
 import se.digg.wallet.r2ps.client.pake.opaque.ClientOpaqueProvider;
 import se.digg.wallet.r2ps.client.pake.opaque.ClientPakeRecord;
 import se.digg.wallet.r2ps.commons.dto.servicetype.ServiceTypeRegistry;
+import se.digg.wallet.r2ps.commons.dto.servicetype.SessionTaskRegistry;
 import se.digg.wallet.r2ps.commons.pake.ECUtils;
 import se.digg.wallet.r2ps.commons.pake.opaque.InMemoryPakeSessionRegistry;
 import se.digg.wallet.r2ps.commons.pake.opaque.PakeSessionRegistry;
@@ -115,7 +116,7 @@ class OpaqueProviderTest {
     clientOpaqueProvider = new ClientOpaqueProvider(clientOpaqueEntity, clientPakeSessionRegistry,
         Duration.ofMinutes(5));
     serverOpaqueProvider = new ServerOpaqueProvider(serverOpaqueEntity, serverPakeSessionRegistry,
-        clientRecordRegistry, Duration.ofMinutes(5), Duration.ofSeconds(5));
+        clientRecordRegistry, new SessionTaskRegistry() ,Duration.ofMinutes(5), Duration.ofSeconds(5));
   }
 
   @Test
@@ -143,7 +144,7 @@ class OpaqueProviderTest {
         serverOpaqueProvider.evaluateAuthRequest(ke1.getEncoded(), clientIdentity, kid, context);
     final String pakeSessionId = evalResponse.pakeSessionId();
     final KE3 ke3 = clientOpaqueProvider.authenticationFinalize(evalResponse.ke2().getEncoded(),
-        pakeSessionId, context, kid, clientState, serverIdentity);
+        pakeSessionId, context, kid, clientState, serverIdentity, null);
     serverOpaqueProvider.finalizeAuthRequest(ke3.getEncoded(), pakeSessionId);
 
     final ClientPakeRecord clientPakeRecord =

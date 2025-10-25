@@ -33,6 +33,13 @@ public class ServiceTypeRegistry {
     registerServiceType(ServiceType.INFO, EncryptOption.USER);
   }
 
+  /**
+   * Retrieves the {@link ServiceType} associated with the specified ID.
+   *
+   * @param id the unique identifier for the service type to retrieve
+   * @return the {@link ServiceType} corresponding to the given ID
+   * @throws IllegalArgumentException if the specified ID does not correspond to a recognized service type
+   */
   @Nonnull
   public ServiceType getServiceType(String id) {
     ServiceType serviceType = serviceTypes.get(id);
@@ -43,8 +50,31 @@ public class ServiceTypeRegistry {
     return serviceType;
   }
 
+  /**
+   * Registers a new service type in the registry.
+   *
+   * @param serviceType the {@link ServiceType} to be registered
+   */
   public void registerServiceType(ServiceType serviceType) {
     this.serviceTypes.put(serviceType.id(), serviceType);
+  }
+
+  /**
+   * Removes a service type from the registry.
+   *
+   * @param id the unique identifier of the service type to be removed
+   */
+  public void removeServiceType(String id) {
+    this.serviceTypes.remove(id);
+  }
+
+  /**
+   * Removes all service types from the registry.
+   *
+   * This method clears all entries in the internal map of service types, leaving the registry empty.
+   */
+  public void removeAllServiceTypes() {
+    this.serviceTypes.clear();
   }
 
   public void registerServiceType(String id, EncryptOption encryptKey) {

@@ -9,7 +9,7 @@ import com.nimbusds.jose.crypto.impl.ECDSAProvider;
 import com.nimbusds.jose.util.Base64URL;
 import lombok.extern.slf4j.Slf4j;
 import org.bouncycastle.util.encoders.Hex;
-import se.digg.wallet.r2ps.client.api.RpsOpsClientApi;
+import se.digg.wallet.r2ps.client.api.R2PSClientApi;
 import se.digg.wallet.r2ps.commons.dto.payload.ByteArrayPayload;
 import se.digg.wallet.r2ps.commons.dto.payload.SignRequestPayload;
 import se.digg.wallet.r2ps.commons.dto.servicetype.ServiceType;
@@ -26,12 +26,12 @@ import java.security.NoSuchAlgorithmException;
 @Slf4j
 public class RemoteHsmECDSASigner extends ECDSAProvider implements JWSSigner {
 
-  private final RpsOpsClientApi clientApi;
+  private final R2PSClientApi clientApi;
   private final String hsmContext;
   private final String hsmKeyIdentifier;
   private final String sessionId;
 
-  public RemoteHsmECDSASigner(final RpsOpsClientApi clientApi, final String hsmContext,
+  public RemoteHsmECDSASigner(final R2PSClientApi clientApi, final String hsmContext,
       final String hsmKeyIdentifier, JWSAlgorithm jwsAlgorithm, final String sessionId)
       throws JsonProcessingException, JOSEException {
     super(jwsAlgorithm);

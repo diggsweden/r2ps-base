@@ -16,6 +16,7 @@ public class ServerPakeRecord implements PakeSessionRegistryRecord {
   private String kid;
   private String pakeSessionId;
   private String context;
+  private String sessionTask;
   private Instant creationTime;
   private Instant expirationTime;
   private byte[] sessionKey;
@@ -50,6 +51,11 @@ public class ServerPakeRecord implements PakeSessionRegistryRecord {
 
     public Builder context(final String context) {
       this.serverPakeRecord.setContext(context);
+      return this;
+    }
+
+    public Builder sessionTask(final String sessionTask) {
+      this.serverPakeRecord.setSessionTask(sessionTask);
       return this;
     }
 

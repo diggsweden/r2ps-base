@@ -1,7 +1,7 @@
 package se.digg.wallet.r2ps.client.jws.pkds.impl;
 
 import com.nimbusds.jose.JOSEException;
-import se.digg.wallet.r2ps.client.api.RpsOpsClientApi;
+import se.digg.wallet.r2ps.client.api.R2PSClientApi;
 import se.digg.wallet.r2ps.client.jws.pkds.PKDSSuite;
 import se.digg.wallet.r2ps.commons.dto.payload.ByteArrayPayload;
 import se.digg.wallet.r2ps.commons.dto.payload.DHRequestPayload;
@@ -16,12 +16,12 @@ import java.security.interfaces.ECPublicKey;
 
 public class RemoteHsmPKDSKeyDerivation extends AbstractEcdhHkdfKeyDerivation {
 
-  private final RpsOpsClientApi clientApi;
+  private final R2PSClientApi clientApi;
   private final String hsmContext;
   private final String hsmKeyIdentifier;
   private final String sessionId;
 
-  public RemoteHsmPKDSKeyDerivation(final RpsOpsClientApi clientApi, final String hsmContext,
+  public RemoteHsmPKDSKeyDerivation(final R2PSClientApi clientApi, final String hsmContext,
       final String hsmKeyIdentifier,
       final String sessionId) {
     this.clientApi = clientApi;
