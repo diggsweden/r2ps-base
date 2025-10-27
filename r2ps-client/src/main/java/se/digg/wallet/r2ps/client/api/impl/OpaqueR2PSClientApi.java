@@ -77,7 +77,7 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
   @Setter
   private EncryptionMethod encryptionMethod = EncryptionMethod.A256GCM;
 
-  public OpaqueR2PSClientApi(OpaqueRpsOpsConfiguration configuration) {
+  public OpaqueR2PSClientApi(OpaqueR2PSConfiguration configuration) {
     this.clientId = configuration.getClientIdentity();
     OpaqueClient opaqueClient = configuration.getOpaqueConfiguration().getOpaqueClient();
     ClientOpaqueEntity clientOpaqueEntity =

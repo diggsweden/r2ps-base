@@ -27,7 +27,7 @@ import java.util.Optional;
 
 @Data
 @NoArgsConstructor
-public class OpaqueRpsOpsConfiguration {
+public class OpaqueR2PSConfiguration {
 
   // Parameters with builder default values
   /**
@@ -73,7 +73,7 @@ public class OpaqueRpsOpsConfiguration {
    */
   public static class Builder {
 
-    private final OpaqueRpsOpsConfiguration configuration;
+    private final OpaqueR2PSConfiguration configuration;
 
     /**
      * Constructs a new instance of the {@code Builder} class with default configurations.
@@ -82,7 +82,7 @@ public class OpaqueRpsOpsConfiguration {
      * registry.
      */
     public Builder() {
-      this.configuration = new OpaqueRpsOpsConfiguration();
+      this.configuration = new OpaqueR2PSConfiguration();
       this.configuration.setOpaqueConfiguration(OpaqueConfiguration.defaultConfiguration());
       this.configuration.setClientPakeSessionRegistry(new InMemoryPakeSessionRegistry<>());
     }
@@ -234,7 +234,7 @@ public class OpaqueRpsOpsConfiguration {
      * @throws NullPointerException     if any required configuration field is missing.
      * @throws IllegalArgumentException if the context configuration map is empty.
      */
-    public OpaqueRpsOpsConfiguration build() {
+    public OpaqueR2PSConfiguration build() {
       Objects.requireNonNull(this.configuration.getClientIdentity(), "Client identity must be set");
       Objects.requireNonNull(this.configuration.getServiceExchangeConnector(),
           "ServiceExchangeConnector must be set");

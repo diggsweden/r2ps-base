@@ -19,7 +19,7 @@ import se.digg.wallet.r2ps.client.api.R2PSClientApi;
 import se.digg.wallet.r2ps.client.api.ServiceExchangeConnector;
 import se.digg.wallet.r2ps.client.api.ServiceResult;
 import se.digg.wallet.r2ps.client.api.impl.OpaqueR2PSClientApi;
-import se.digg.wallet.r2ps.client.api.impl.OpaqueRpsOpsConfiguration;
+import se.digg.wallet.r2ps.client.api.impl.OpaqueR2PSConfiguration;
 import se.digg.wallet.r2ps.client.pake.opaque.ClientPakeRecord;
 import se.digg.wallet.r2ps.commons.dto.payload.ByteArrayPayload;
 import se.digg.wallet.r2ps.commons.dto.payload.DHRequestPayload;
@@ -112,7 +112,7 @@ class OpaqueR2PSClientApiTest {
 
     clientPakeSessionRegistry = new InMemoryPakeSessionRegistry<>();
 
-    clientApi = new OpaqueR2PSClientApi(OpaqueRpsOpsConfiguration.builder()
+    clientApi = new OpaqueR2PSClientApi(OpaqueR2PSConfiguration.builder()
         .clientIdentity(clientIdentity)
         .clientPakeSessionRegistry(clientPakeSessionRegistry)
         .contextSessionDuration(Duration.ofMinutes(5))
