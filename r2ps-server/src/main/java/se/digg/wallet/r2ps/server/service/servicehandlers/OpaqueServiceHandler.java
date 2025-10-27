@@ -36,7 +36,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 
-import static se.digg.wallet.r2ps.commons.dto.PakeState.FINALIZE;
+import static se.digg.wallet.r2ps.commons.dto.PakeState.finalize;
 
 public class OpaqueServiceHandler implements ServiceTypeHandler {
 
@@ -110,7 +110,7 @@ public class OpaqueServiceHandler implements ServiceTypeHandler {
               PakeRequestPayload.class);
       // Check authorization if the pake state the "finalize" state.
       if (serviceType.id().equals(ServiceType.PIN_REGISTRATION) && pakeRequestPayload.getState()
-          .equals(FINALIZE)) {
+          .equals(finalize)) {
 
         boolean match = pinAuthorization.authorize(pakeRequestPayload.getAuthorization(),
             clientPublicKeyRecord.getKid(), serviceRequest.getClientID());
@@ -137,13 +137,13 @@ public class OpaqueServiceHandler implements ServiceTypeHandler {
 
       // Create the response payload
       return switch (state) {
-        case EVALUATE -> {
+        case evaluate -> {
           final RegistrationResponse registrationResponse =
               opaqueProvider.registrationResponse(pakeRequestPayload.getRequestData(),
                   serviceRequest.getKid());
           yield PakeResponsePayload.builder().responseData(registrationResponse.getEncoded()).build();
         }
-        case FINALIZE -> {
+        case finalize -> {
           opaqueProvider.registrationFinalize(serviceRequest.getClientID(), serviceRequest.getKid(),
               pakeRequestPayload.getRequestData());
           yield PakeResponsePayload.builder().message("OK").build();
@@ -188,7 +188,7 @@ public class OpaqueServiceHandler implements ServiceTypeHandler {
 
       // Create the response payload
       return switch (state) {
-        case EVALUATE -> {
+        case evaluate -> {
           final EvaluationResponseResult evaluationResult =
               opaqueProvider.evaluateAuthRequest(pakeRequestPayload.getRequestData(),
                   serviceRequest.getClientID(), serviceRequest.getKid(),
@@ -196,7 +196,7 @@ public class OpaqueServiceHandler implements ServiceTypeHandler {
           yield PakeResponsePayload.builder().responseData(evaluationResult.ke2().getEncoded())
               .pakeSessionId(evaluationResult.pakeSessionId()).build();
         }
-        case FINALIZE -> {
+        case finalize -> {
           FinalizeResponse finalizeResponse =
               opaqueProvider.finalizeAuthRequest(pakeRequestPayload.getRequestData(),
                   serviceRequest.getPakeSessionId(), pakeRequestPayload.getTask(),

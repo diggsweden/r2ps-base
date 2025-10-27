@@ -57,8 +57,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
-import static se.digg.wallet.r2ps.commons.dto.PakeState.EVALUATE;
-import static se.digg.wallet.r2ps.commons.dto.PakeState.FINALIZE;
+import static se.digg.wallet.r2ps.commons.dto.PakeState.evaluate;
+import static se.digg.wallet.r2ps.commons.dto.PakeState.finalize;
 
 @Slf4j
 public class OpaqueR2PSClientApi implements R2PSClientApi {
@@ -119,7 +119,7 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
       final KE1 ke1 = opaqueProvider.authenticationEvaluate(hPin, clientState);
       PakeRequestPayload pakeEvaluatePayload = PakeRequestPayload.builder()
           .protocol(PakeProtocol.opaque)
-          .state(EVALUATE)
+          .state(evaluate)
           .requestData(ke1.getEncoded())
           .build();
       final ServiceRequest pakeRequestWrapper = ServiceRequest.builder()
@@ -160,7 +160,7 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
       nonce = Hex.toHexString(OpaqueUtils.random(32));
       PakeRequestPayload pakeFinalizePayload = PakeRequestPayload.builder()
           .protocol(PakeProtocol.opaque)
-          .state(FINALIZE)
+          .state(finalize)
           .task(task)
           .sessionDuration(requestedDuration)
           .requestData(ke3.getEncoded())
@@ -323,7 +323,7 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
         opaqueProvider.createRegistrationRequest(hPin);
     PakeRequestPayload registrationEvaluatePayload = PakeRequestPayload.builder()
         .protocol(PakeProtocol.opaque)
-        .state(EVALUATE)
+        .state(evaluate)
         .requestData(registrationRequestBundle.registrationRequest().getEncoded())
         .build();
     String serviceTypeId =
@@ -372,7 +372,7 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
             clientContextConfiguration.getServerIdentity());
     PakeRequestPayload registrationFinalizePayload = PakeRequestPayload.builder()
         .protocol(PakeProtocol.opaque)
-        .state(FINALIZE)
+        .state(finalize)
         .authorization(authorization) // Will always be null on PIN change
         .requestData(registrationRecord.getEncoded())
         .build();
@@ -406,7 +406,7 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
       throws PakeSessionException, ServiceResponseException, PakeAuthenticationException,
       ServiceRequestException {
     final ServiceType serviceType = serviceTypeRegistry.getServiceType(serviceTypeId);
-    if (EncryptOption.USER != serviceType.encryptKey()) {
+    if (EncryptOption.user != serviceType.encryptKey()) {
       throw new ServiceRequestException("This service type must use encrypted payload");
     }
     return requestService(serviceType, payload, context, sessionId);
@@ -419,7 +419,7 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
       throws PakeSessionException, ServiceResponseException, PakeAuthenticationException,
       ServiceRequestException {
     final ServiceType serviceType = serviceTypeRegistry.getServiceType(serviceTypeId);
-    if (EncryptOption.DEVICE != serviceType.encryptKey()) {
+    if (EncryptOption.device != serviceType.encryptKey()) {
       throw new ServiceRequestException("This service type must use device authenticated encryption");
     }
     return requestService(serviceType, payload, context, null);
@@ -446,7 +446,7 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
       String pakeSessionId = null;
       JWEEncryptionParams encryptionParams = null;
       JWEEncryptionParams decryptionParams = null;
-      if (encryptOption.equals(EncryptOption.USER)) {
+      if (encryptOption.equals(EncryptOption.user)) {
         final ClientPakeRecord pakeSession =
             opaqueProvider.getSessionRegistry().getPakeSession(sessionId);
         if (pakeSession == null) {
@@ -464,7 +464,7 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
             encryptionMethod);
         decryptionParams = encryptionParams;
       }
-      if (encryptOption.equals(EncryptOption.DEVICE)) {
+      if (encryptOption.equals(EncryptOption.device)) {
         encryptionParams = getESDHEncryptionParams(clientContextConfiguration, true);
         decryptionParams = getESDHEncryptionParams(clientContextConfiguration, false);
       }
@@ -543,10 +543,10 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
         final byte[] serviceData = serviceResponse.getServiceData();
         final ServiceType serviceType = serviceTypeRegistry.getServiceType(serviceTypeId);
         decryptedPayload = serviceData;
-        if (EncryptOption.USER == serviceType.encryptKey()) {
+        if (EncryptOption.user == serviceType.encryptKey()) {
           decryptedPayload = Utils.decryptJWE(serviceData, encryptionParams);
         }
-        if (EncryptOption.DEVICE == serviceType.encryptKey()) {
+        if (EncryptOption.device == serviceType.encryptKey()) {
           decryptedPayload =
               Utils.decryptJWE_ECDH(serviceData, encryptionParams.staticPrivateRecipientKey());
         }
@@ -556,7 +556,7 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
                   .writeValueAsString(serviceResponse));
 
           log.debug("Service data in service response{}:\n{}",
-              EncryptOption.USER == serviceType.encryptKey() ? " after decryption" : "",
+              EncryptOption.user == serviceType.encryptKey() ? " after decryption" : "",
               Utils.prettyPrintByteArray(decryptedPayload));
         }
       } else {

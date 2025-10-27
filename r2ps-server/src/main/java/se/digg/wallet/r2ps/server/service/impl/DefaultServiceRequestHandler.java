@@ -140,12 +140,12 @@ public class DefaultServiceRequestHandler implements ServiceRequestHandler {
       JWEEncryptionParams encryptionParams = null;
       JWEEncryptionParams decryptionParams = null;
       byte[] decryptedPayload = serviceRequest.getServiceData();
-      if (EncryptOption.USER == serviceType.encryptKey()) {
+      if (EncryptOption.user == serviceType.encryptKey()) {
         encryptionParams = createEncryptionParams(pakeSession);
         decryptionParams = encryptionParams;
         decryptedPayload = Utils.decryptJWE(serviceRequest.getServiceData(), decryptionParams);
       }
-      if (EncryptOption.DEVICE == serviceType.encryptKey()) {
+      if (EncryptOption.device == serviceType.encryptKey()) {
         encryptionParams = createESDHEncryptionParams(clientPublicKeyRecord, true);
         decryptionParams = createESDHEncryptionParams(clientPublicKeyRecord, false);
         decryptedPayload = Utils.decryptJWE_ECDH(serviceRequest.getServiceData(),
