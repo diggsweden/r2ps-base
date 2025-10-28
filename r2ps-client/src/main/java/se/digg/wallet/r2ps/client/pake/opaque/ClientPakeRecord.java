@@ -13,6 +13,8 @@ public class ClientPakeRecord implements PakeSessionRegistryRecord {
 
   private String clientId;
   private String context;
+  private String requestedSessionTaskId;
+  private String sessionTaskId;
   private String kid;
   private String pakeSessionId;
   private Instant creationTime;
@@ -42,13 +44,23 @@ public class ClientPakeRecord implements PakeSessionRegistryRecord {
       return this;
     }
 
+    public Builder sessionTaskId(final String sessionTaskId) {
+      this.clientPakeRecord.setSessionTaskId(sessionTaskId);
+      return this;
+    }
+
+    public Builder requestedSessionTaskId(final String requestedSessionTaskId) {
+      this.clientPakeRecord.setRequestedSessionTaskId(requestedSessionTaskId);
+      return this;
+    }
+
     public Builder pakeSessionId(final String pakeSessionId) {
       this.clientPakeRecord.setPakeSessionId(pakeSessionId);
       return this;
     }
 
-    public Builder expiryDuration(final Duration recordDuration) {
-      this.clientPakeRecord.setExpirationTime(Instant.now().plus(recordDuration));
+    public Builder expirationTime(final Instant expirationTime) {
+      this.clientPakeRecord.setExpirationTime(expirationTime);
       return this;
     }
 

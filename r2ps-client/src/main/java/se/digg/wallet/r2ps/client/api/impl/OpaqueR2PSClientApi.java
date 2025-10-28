@@ -19,7 +19,7 @@ import se.digg.crypto.opaque.error.DeserializationException;
 import se.digg.crypto.opaque.error.InvalidInputException;
 import se.digg.wallet.r2ps.client.api.ClientContextConfiguration;
 import se.digg.wallet.r2ps.commons.dto.HttpResponse;
-import se.digg.wallet.r2ps.client.api.RpsOpsClientApi;
+import se.digg.wallet.r2ps.client.api.R2PSClientApi;
 import se.digg.wallet.r2ps.client.api.ServiceExchangeConnector;
 import se.digg.wallet.r2ps.client.api.ServiceResult;
 import se.digg.wallet.r2ps.commons.dto.EncryptOption;
@@ -52,15 +52,16 @@ import javax.crypto.spec.SecretKeySpec;
 import java.io.IOException;
 import java.security.interfaces.ECPrivateKey;
 import java.text.ParseException;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
-import static se.digg.wallet.r2ps.commons.dto.PakeState.EVALUATE;
-import static se.digg.wallet.r2ps.commons.dto.PakeState.FINALIZE;
+import static se.digg.wallet.r2ps.commons.dto.PakeState.evaluate;
+import static se.digg.wallet.r2ps.commons.dto.PakeState.finalize;
 
 @Slf4j
-public class OpaqueRpsOpsClientApi implements RpsOpsClientApi {
+public class OpaqueR2PSClientApi implements R2PSClientApi {
 
   private final String clientId;
   private final ClientOpaqueProvider opaqueProvider;
@@ -76,7 +77,7 @@ public class OpaqueRpsOpsClientApi implements RpsOpsClientApi {
   @Setter
   private EncryptionMethod encryptionMethod = EncryptionMethod.A256GCM;
 
-  public OpaqueRpsOpsClientApi(OpaqueRpsOpsConfiguration configuration) {
+  public OpaqueR2PSClientApi(OpaqueR2PSConfiguration configuration) {
     this.clientId = configuration.getClientIdentity();
     OpaqueClient opaqueClient = configuration.getOpaqueConfiguration().getOpaqueClient();
     ClientOpaqueEntity clientOpaqueEntity =
@@ -95,6 +96,12 @@ public class OpaqueRpsOpsClientApi implements RpsOpsClientApi {
   @Override
   public PakeResponsePayload createSession(final String pin, final String context)
       throws PakeSessionException, ServiceResponseException, PakeAuthenticationException {
+    return createSession(pin, context, null, null);
+  }
+
+  @Override
+  public PakeResponsePayload createSession(final String pin, final String context, String task, Duration requestedDuration)
+      throws PakeSessionException, ServiceResponseException, PakeAuthenticationException {
     String pakeSessionId = null;
     try {
       log.debug("Creating session for context {}", context);
@@ -112,7 +119,7 @@ public class OpaqueRpsOpsClientApi implements RpsOpsClientApi {
       final KE1 ke1 = opaqueProvider.authenticationEvaluate(hPin, clientState);
       PakeRequestPayload pakeEvaluatePayload = PakeRequestPayload.builder()
           .protocol(PakeProtocol.opaque)
-          .state(EVALUATE)
+          .state(evaluate)
           .requestData(ke1.getEncoded())
           .build();
       final ServiceRequest pakeRequestWrapper = ServiceRequest.builder()
@@ -143,7 +150,7 @@ public class OpaqueRpsOpsClientApi implements RpsOpsClientApi {
       try {
         ke3 = opaqueProvider.authenticationFinalize(
             ke2, pakeSessionId, context, clientContextConfiguration.getKid(), clientState,
-            clientContextConfiguration.getServerIdentity());
+            clientContextConfiguration.getServerIdentity(), task);
       } catch (Exception e) {
         throw new PakeAuthenticationException(
             String.format("Authentication failed with the presented PIN and client key: %s",
@@ -153,7 +160,9 @@ public class OpaqueRpsOpsClientApi implements RpsOpsClientApi {
       nonce = Hex.toHexString(OpaqueUtils.random(32));
       PakeRequestPayload pakeFinalizePayload = PakeRequestPayload.builder()
           .protocol(PakeProtocol.opaque)
-          .state(FINALIZE)
+          .state(finalize)
+          .task(task)
+          .sessionDuration(requestedDuration)
           .requestData(ke3.getEncoded())
           .build();
       pakeRequestWrapper.setPakeSessionId(pakeSessionId);
@@ -173,6 +182,19 @@ public class OpaqueRpsOpsClientApi implements RpsOpsClientApi {
           StaticResources.TIME_STAMP_SECONDS_MAPPER.readValue(finalizeResult.decryptedPayload(),
               PakeResponsePayload.class);
       log.debug("Created session for context {} with sessionID {}", context, pakeSessionId);
+      // Update the session expiration time in the registry with the expiration time from the server and add task.
+      final Instant sessionExpirationTime = responsePayload.getSessionExpirationTime();
+      if (sessionExpirationTime == null) {
+        log.debug("No session expiration time from server. Abort session");
+        opaqueProvider.getSessionRegistry().deletePakeSession(pakeSessionId);
+        throw new PakeSessionException("No session expiration time from server. Abort session");
+      }
+      // Update the session registry
+      final ClientPakeRecord pakeSession = opaqueProvider.getSessionRegistry().getPakeSession(pakeSessionId);
+      pakeSession.setExpirationTime(sessionExpirationTime);
+      pakeSession.setSessionTaskId(responsePayload.getTask());
+      opaqueProvider.getSessionRegistry().updatePakeSession(pakeSession);
+
       return responsePayload;
     } catch (PakeSessionException | ServiceResponseException | PakeAuthenticationException e) {
       if (pakeSessionId != null) {
@@ -301,7 +323,7 @@ public class OpaqueRpsOpsClientApi implements RpsOpsClientApi {
         opaqueProvider.createRegistrationRequest(hPin);
     PakeRequestPayload registrationEvaluatePayload = PakeRequestPayload.builder()
         .protocol(PakeProtocol.opaque)
-        .state(EVALUATE)
+        .state(evaluate)
         .requestData(registrationRequestBundle.registrationRequest().getEncoded())
         .build();
     String serviceTypeId =
@@ -350,7 +372,7 @@ public class OpaqueRpsOpsClientApi implements RpsOpsClientApi {
             clientContextConfiguration.getServerIdentity());
     PakeRequestPayload registrationFinalizePayload = PakeRequestPayload.builder()
         .protocol(PakeProtocol.opaque)
-        .state(FINALIZE)
+        .state(finalize)
         .authorization(authorization) // Will always be null on PIN change
         .requestData(registrationRecord.getEncoded())
         .build();
@@ -384,7 +406,7 @@ public class OpaqueRpsOpsClientApi implements RpsOpsClientApi {
       throws PakeSessionException, ServiceResponseException, PakeAuthenticationException,
       ServiceRequestException {
     final ServiceType serviceType = serviceTypeRegistry.getServiceType(serviceTypeId);
-    if (EncryptOption.USER != serviceType.encryptKey()) {
+    if (EncryptOption.user != serviceType.encryptKey()) {
       throw new ServiceRequestException("This service type must use encrypted payload");
     }
     return requestService(serviceType, payload, context, sessionId);
@@ -397,7 +419,7 @@ public class OpaqueRpsOpsClientApi implements RpsOpsClientApi {
       throws PakeSessionException, ServiceResponseException, PakeAuthenticationException,
       ServiceRequestException {
     final ServiceType serviceType = serviceTypeRegistry.getServiceType(serviceTypeId);
-    if (EncryptOption.DEVICE != serviceType.encryptKey()) {
+    if (EncryptOption.device != serviceType.encryptKey()) {
       throw new ServiceRequestException("This service type must use device authenticated encryption");
     }
     return requestService(serviceType, payload, context, null);
@@ -424,7 +446,7 @@ public class OpaqueRpsOpsClientApi implements RpsOpsClientApi {
       String pakeSessionId = null;
       JWEEncryptionParams encryptionParams = null;
       JWEEncryptionParams decryptionParams = null;
-      if (encryptOption.equals(EncryptOption.USER)) {
+      if (encryptOption.equals(EncryptOption.user)) {
         final ClientPakeRecord pakeSession =
             opaqueProvider.getSessionRegistry().getPakeSession(sessionId);
         if (pakeSession == null) {
@@ -442,7 +464,7 @@ public class OpaqueRpsOpsClientApi implements RpsOpsClientApi {
             encryptionMethod);
         decryptionParams = encryptionParams;
       }
-      if (encryptOption.equals(EncryptOption.DEVICE)) {
+      if (encryptOption.equals(EncryptOption.device)) {
         encryptionParams = getESDHEncryptionParams(clientContextConfiguration, true);
         decryptionParams = getESDHEncryptionParams(clientContextConfiguration, false);
       }
@@ -521,10 +543,10 @@ public class OpaqueRpsOpsClientApi implements RpsOpsClientApi {
         final byte[] serviceData = serviceResponse.getServiceData();
         final ServiceType serviceType = serviceTypeRegistry.getServiceType(serviceTypeId);
         decryptedPayload = serviceData;
-        if (EncryptOption.USER == serviceType.encryptKey()) {
+        if (EncryptOption.user == serviceType.encryptKey()) {
           decryptedPayload = Utils.decryptJWE(serviceData, encryptionParams);
         }
-        if (EncryptOption.DEVICE == serviceType.encryptKey()) {
+        if (EncryptOption.device == serviceType.encryptKey()) {
           decryptedPayload =
               Utils.decryptJWE_ECDH(serviceData, encryptionParams.staticPrivateRecipientKey());
         }
@@ -534,7 +556,7 @@ public class OpaqueRpsOpsClientApi implements RpsOpsClientApi {
                   .writeValueAsString(serviceResponse));
 
           log.debug("Service data in service response{}:\n{}",
-              EncryptOption.USER == serviceType.encryptKey() ? " after decryption" : "",
+              EncryptOption.user == serviceType.encryptKey() ? " after decryption" : "",
               Utils.prettyPrintByteArray(decryptedPayload));
         }
       } else {

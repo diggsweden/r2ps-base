@@ -35,14 +35,14 @@ public class ServiceExchangeFactory {
         "Encryption parameters must not be null for this exchange type: " + serviceType.id());
 
     byte[] serviceData = switch (serviceType.encryptKey()) {
-      case USER -> Utils.encryptJWE(exchangePayload.serialize(), encryptionParams);
-      case DEVICE -> Utils.encryptJWE_ECDH(exchangePayload.serialize(), encryptionParams);
+      case user -> Utils.encryptJWE(exchangePayload.serialize(), encryptionParams);
+      case device -> Utils.encryptJWE_ECDH(exchangePayload.serialize(), encryptionParams);
     };
 
     if (log.isDebugEnabled()) {
       log.debug("Preparing service {} payload with {} encryption",
           exchangeWrapper instanceof ServiceRequest ? "request" : "response",
-          serviceType.encryptKey() == EncryptOption.USER ? "session" : "device");
+          serviceType.encryptKey() == EncryptOption.user ? "session" : "device");
     }
 
     exchangeWrapper.setServiceData(serviceData);

@@ -16,23 +16,30 @@ public class ServiceTypeRegistry {
 
   public ServiceTypeRegistry() {
     this.serviceTypes = new HashMap<>();
-    registerServiceType(ServiceType.AUTHENTICATE, EncryptOption.DEVICE);
-    registerServiceType(ServiceType.PIN_REGISTRATION, EncryptOption.DEVICE);
-    registerServiceType(ServiceType.PIN_CHANGE, EncryptOption.USER);
-    registerServiceType(ServiceType.HSM_ECDSA, EncryptOption.USER);
-    registerServiceType(ServiceType.HSM_ECDH, EncryptOption.USER);
-    registerServiceType(ServiceType.HSM_KEYGEN, EncryptOption.USER);
-    registerServiceType(ServiceType.HSM_DELETE_KEY, EncryptOption.USER);
-    registerServiceType(ServiceType.HSM_LIST_KEYS, EncryptOption.USER);
-    registerServiceType(ServiceType.SESSION_END, EncryptOption.DEVICE);
-    registerServiceType(ServiceType.SESSION_CONTEXT_END, EncryptOption.DEVICE);
-    registerServiceType(ServiceType.STORE, EncryptOption.USER);
-    registerServiceType(ServiceType.RETRIEVE, EncryptOption.USER);
-    registerServiceType(ServiceType.LOG, EncryptOption.USER);
-    registerServiceType(ServiceType.GET_LOG, EncryptOption.USER);
-    registerServiceType(ServiceType.INFO, EncryptOption.USER);
+    registerServiceType(ServiceType.AUTHENTICATE, EncryptOption.device);
+    registerServiceType(ServiceType.PIN_REGISTRATION, EncryptOption.device);
+    registerServiceType(ServiceType.PIN_CHANGE, EncryptOption.user);
+    registerServiceType(ServiceType.HSM_ECDSA, EncryptOption.user);
+    registerServiceType(ServiceType.HSM_ECDH, EncryptOption.user);
+    registerServiceType(ServiceType.HSM_KEYGEN, EncryptOption.user);
+    registerServiceType(ServiceType.HSM_DELETE_KEY, EncryptOption.user);
+    registerServiceType(ServiceType.HSM_LIST_KEYS, EncryptOption.user);
+    registerServiceType(ServiceType.SESSION_END, EncryptOption.device);
+    registerServiceType(ServiceType.SESSION_CONTEXT_END, EncryptOption.device);
+    registerServiceType(ServiceType.STORE, EncryptOption.user);
+    registerServiceType(ServiceType.RETRIEVE, EncryptOption.user);
+    registerServiceType(ServiceType.LOG, EncryptOption.user);
+    registerServiceType(ServiceType.GET_LOG, EncryptOption.user);
+    registerServiceType(ServiceType.INFO, EncryptOption.user);
   }
 
+  /**
+   * Retrieves the {@link ServiceType} associated with the specified ID.
+   *
+   * @param id the unique identifier for the service type to retrieve
+   * @return the {@link ServiceType} corresponding to the given ID
+   * @throws IllegalArgumentException if the specified ID does not correspond to a recognized service type
+   */
   @Nonnull
   public ServiceType getServiceType(String id) {
     ServiceType serviceType = serviceTypes.get(id);
@@ -43,8 +50,31 @@ public class ServiceTypeRegistry {
     return serviceType;
   }
 
+  /**
+   * Registers a new service type in the registry.
+   *
+   * @param serviceType the {@link ServiceType} to be registered
+   */
   public void registerServiceType(ServiceType serviceType) {
     this.serviceTypes.put(serviceType.id(), serviceType);
+  }
+
+  /**
+   * Removes a service type from the registry.
+   *
+   * @param id the unique identifier of the service type to be removed
+   */
+  public void removeServiceType(String id) {
+    this.serviceTypes.remove(id);
+  }
+
+  /**
+   * Removes all service types from the registry.
+   *
+   * This method clears all entries in the internal map of service types, leaving the registry empty.
+   */
+  public void removeAllServiceTypes() {
+    this.serviceTypes.clear();
   }
 
   public void registerServiceType(String id, EncryptOption encryptKey) {

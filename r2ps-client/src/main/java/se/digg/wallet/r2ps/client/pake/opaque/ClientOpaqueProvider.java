@@ -18,6 +18,7 @@ import se.digg.wallet.r2ps.commons.pake.opaque.PakeSessionRegistry;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.Instant;
 
 public class ClientOpaqueProvider {
 
@@ -57,7 +58,7 @@ public class ClientOpaqueProvider {
   }
 
   public KE3 authenticationFinalize(byte[] ke2, String pakeSessionId, String context, String kid,
-      ClientState clientState, String serverIdentity)
+      ClientState clientState, String serverIdentity, String requestedTask)
       throws InvalidInputException, EvelopeRecoveryException, ServerAuthenticationException,
       DeriveKeyPairErrorException, DeserializationException {
     final ClientKeyExchangeResult clientKeyExchangeResult =
@@ -72,7 +73,7 @@ public class ClientOpaqueProvider {
         .pakeSessionId(pakeSessionId)
         .kid(kid)
         .context(context)
-        .expiryDuration(recordDuration)
+        .requestedSessionTaskId(requestedTask)
         .sessionKey(clientKeyExchangeResult.sessionKey())
         .exportKey(clientKeyExchangeResult.exportKey())
         .build();

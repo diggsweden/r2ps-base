@@ -106,7 +106,7 @@ class ExchangePayloadTest {
         .build();
 
     PakeRequestPayload payload = PakeRequestPayload.builder()
-        .state(PakeState.EVALUATE)
+        .state(PakeState.evaluate)
         .requestData(ke1.getEncoded())
         .build();
 
