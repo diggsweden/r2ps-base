@@ -37,7 +37,7 @@
     </dependency>
     <dependency>
       <groupId>se.digg.crypto</groupId>
-      <artifactId>hash-to-curve</artifactId>
+      <artifactId>hash2curve</artifactId>
     </dependency>
     <dependency>
       <groupId>org.slf4j</groupId>
