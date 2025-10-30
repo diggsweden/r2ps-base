@@ -158,7 +158,7 @@ class ExchangePayloadTest {
     final Object serviceData = signedPayload.get("data");
     final byte[] serviceDataBytes = Base64.decode(serviceData.toString());
     log.info("ESDH Encrypted Service data:\n{}", serviceData);
-    final byte[] decrypted = Utils.decryptJWE_ECDH(serviceDataBytes, decryptionStaticKey);
+    final byte[] decrypted = Utils.decryptJWEECDH(serviceDataBytes, decryptionStaticKey);
     final String serviceDataString = new String(decrypted, StandardCharsets.UTF_8);
     log.info("Decrypted Service data:\n{}", prettyPrint(serviceDataString));
   }

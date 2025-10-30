@@ -35,7 +35,7 @@ public class ServerOpaqueProvider {
    */
   private final Duration finalizedDuration;
 
-  @Getter private Duration lastUpdated = Duration.ofMinutes(10);
+  @Getter private final Duration lastUpdated = Duration.ofMinutes(10);
 
   public ServerOpaqueProvider(
       final ServerOpaqueEntity serverOpaqueEntity,
@@ -198,7 +198,8 @@ public class ServerOpaqueProvider {
     }
     if (requestedSessionDuration.compareTo(maxDuration) > 0) {
       log.debug(
-          "Requested session duration {} exceeds maximum session duration {}. Setting session expiration time to max duration.",
+          "Requested session duration {} exceeds maximum session duration {}. Setting session "
+              + "expiration time to max duration.",
           requestedSessionDuration,
           maxDuration);
       return Instant.now().plus(maxDuration);

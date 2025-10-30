@@ -81,7 +81,7 @@ import se.digg.wallet.r2ps.server.service.servicehandlers.ServiceTypeHandler;
 import se.digg.wallet.r2ps.server.service.servicehandlers.SessionServiceHandler;
 import se.digg.wallet.r2ps.test.data.TestCredentials;
 import se.digg.wallet.r2ps.test.data.TestMessage;
-import se.digg.wallet.r2ps.test.testUtils.JSONUtils;
+import se.digg.wallet.r2ps.test.testutils.JSONUtils;
 
 @Slf4j
 class OpaqueR2PSClientApiTest {

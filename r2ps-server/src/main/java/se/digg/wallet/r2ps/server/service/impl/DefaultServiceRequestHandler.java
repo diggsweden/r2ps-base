@@ -76,6 +76,23 @@ public class DefaultServiceRequestHandler implements ServiceRequestHandler {
     this.replayChecker = configuration.getReplayChecker();
   }
 
+  private static JWSVerifier getJwsVerifier(final ClientPublicKeyRecord clientPublicKeyRecord)
+      throws ServiceRequestHandlingException, JOSEException {
+    if (clientPublicKeyRecord == null) {
+      throw new ServiceRequestHandlingException(
+          "No client public key is registered that match the request", ErrorCode.ACCESS_DENIED);
+    }
+
+    final PublicKey clientPublicKey = clientPublicKeyRecord.getPublicKey();
+    return switch (clientPublicKey.getAlgorithm()) {
+      case "EC" -> new ECDSAVerifier((ECPublicKey) clientPublicKey);
+      case "RSA" -> new RSASSAVerifier((RSAPublicKey) clientPublicKey);
+      default -> throw new ServiceRequestHandlingException(
+          "Unsupported public key algorithm: " + clientPublicKey.getAlgorithm(),
+          ErrorCode.ILLEGAL_REQUEST_DATA);
+    };
+  }
+
   @Override
   public String handleServiceRequest(final String serviceRequestJws)
       throws ServiceRequestHandlingException {
@@ -149,7 +166,7 @@ public class DefaultServiceRequestHandler implements ServiceRequestHandler {
         encryptionParams = createESDHEncryptionParams(clientPublicKeyRecord, true);
         decryptionParams = createESDHEncryptionParams(clientPublicKeyRecord, false);
         decryptedPayload =
-            Utils.decryptJWE_ECDH(
+            Utils.decryptJWEECDH(
                 serviceRequest.getServiceData(), decryptionParams.staticPrivateRecipientKey());
       }
       log.debug(
@@ -176,7 +193,8 @@ public class DefaultServiceRequestHandler implements ServiceRequestHandler {
                   () ->
                       new ServiceRequestHandlingException(
                           String.format(
-                              "The service type '%s' under context '%s' is not supported by any handler",
+                              "The service type '%s' under context '%s' is not supported by"
+                                  + " any handler",
                               serviceType.id(), serviceRequest.getContext()),
                           ErrorCode.ACCESS_DENIED));
       ExchangePayload<?> responsePayload =
@@ -215,22 +233,5 @@ public class DefaultServiceRequestHandler implements ServiceRequestHandler {
     }
     return new JWEEncryptionParams(
         new SecretKeySpec(pakeSession.getSessionKey(), "AES"), encryptionMethod);
-  }
-
-  private static JWSVerifier getJwsVerifier(final ClientPublicKeyRecord clientPublicKeyRecord)
-      throws ServiceRequestHandlingException, JOSEException {
-    if (clientPublicKeyRecord == null) {
-      throw new ServiceRequestHandlingException(
-          "No client public key is registered that match the request", ErrorCode.ACCESS_DENIED);
-    }
-
-    final PublicKey clientPublicKey = clientPublicKeyRecord.getPublicKey();
-    return switch (clientPublicKey.getAlgorithm()) {
-      case "EC" -> new ECDSAVerifier((ECPublicKey) clientPublicKey);
-      case "RSA" -> new RSASSAVerifier((RSAPublicKey) clientPublicKey);
-      default -> throw new ServiceRequestHandlingException(
-          "Unsupported public key algorithm: " + clientPublicKey.getAlgorithm(),
-          ErrorCode.ILLEGAL_REQUEST_DATA);
-    };
   }
 }

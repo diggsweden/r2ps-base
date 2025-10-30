@@ -14,7 +14,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import se.digg.wallet.r2ps.commons.StaticResources;
 import se.digg.wallet.r2ps.test.data.TestCredentials;
-import se.digg.wallet.r2ps.test.testUtils.JSONUtils;
+import se.digg.wallet.r2ps.test.testutils.JSONUtils;
 
 @Slf4j
 class PKDSHeaderParamTest {

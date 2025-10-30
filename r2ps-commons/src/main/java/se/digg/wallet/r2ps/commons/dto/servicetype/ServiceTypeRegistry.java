@@ -56,6 +56,11 @@ public class ServiceTypeRegistry {
     this.serviceTypes.put(serviceType.id(), serviceType);
   }
 
+  public void registerServiceType(String id, EncryptOption encryptKey) {
+    ServiceType serviceType = new ServiceType(id, encryptKey);
+    this.registerServiceType(serviceType);
+  }
+
   /**
    * Removes a service type from the registry.
    *
@@ -73,10 +78,5 @@ public class ServiceTypeRegistry {
    */
   public void removeAllServiceTypes() {
     this.serviceTypes.clear();
-  }
-
-  public void registerServiceType(String id, EncryptOption encryptKey) {
-    ServiceType serviceType = new ServiceType(id, encryptKey);
-    this.registerServiceType(serviceType);
   }
 }

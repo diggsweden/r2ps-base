@@ -41,6 +41,18 @@ public class SessionTaskRegistry {
   }
 
   /**
+   * Registers a new session task in the registry using the provided unique identifier and maximum
+   * duration.
+   *
+   * @param id the unique identifier for the session task to be registered
+   * @param maxDuration the maximum duration for which the session task is allowed to run
+   */
+  public void registerSessionTask(String id, Duration maxDuration) {
+    SessionTask sessionTask = new SessionTask(id, maxDuration);
+    this.registerSessionTask(sessionTask);
+  }
+
+  /**
    * Removes a session task from the registry.
    *
    * @param id the unique identifier of the session task to be removed
@@ -57,17 +69,5 @@ public class SessionTaskRegistry {
    */
   public void removeAllSessionTasks() {
     this.sessionTasks.clear();
-  }
-
-  /**
-   * Registers a new session task in the registry using the provided unique identifier and maximum
-   * duration.
-   *
-   * @param id the unique identifier for the session task to be registered
-   * @param maxDuration the maximum duration for which the session task is allowed to run
-   */
-  public void registerSessionTask(String id, Duration maxDuration) {
-    SessionTask sessionTask = new SessionTask(id, maxDuration);
-    this.registerSessionTask(sessionTask);
   }
 }

@@ -40,7 +40,7 @@ public class ServiceExchangeFactory {
     byte[] serviceData =
         switch (serviceType.encryptKey()) {
           case user -> Utils.encryptJWE(exchangePayload.serialize(), encryptionParams);
-          case device -> Utils.encryptJWE_ECDH(exchangePayload.serialize(), encryptionParams);
+          case device -> Utils.encryptJWEECDH(exchangePayload.serialize(), encryptionParams);
         };
 
     if (log.isDebugEnabled()) {

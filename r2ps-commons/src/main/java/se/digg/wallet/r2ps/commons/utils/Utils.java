@@ -39,7 +39,7 @@ public class Utils {
   }
 
   // Encrypt using ECDH-ES + AES-GCM with server’s static EC public key
-  public static byte[] encryptJWE_ECDH(byte[] plaintext, JWEEncryptionParams encryptionParams)
+  public static byte[] encryptJWEECDH(byte[] plaintext, JWEEncryptionParams encryptionParams)
       throws JOSEException {
     // Create JWE header with ECDH-ES algorithm and encryption method
     JWEHeader header =
@@ -58,7 +58,7 @@ public class Utils {
   }
 
   // Decrypt using server’s static EC private key
-  public static byte[] decryptJWE_ECDH(byte[] jweData, ECPrivateKey privateKey)
+  public static byte[] decryptJWEECDH(byte[] jweData, ECPrivateKey privateKey)
       throws JOSEException, ParseException {
     JWEObject jweObject = JWEObject.parse(new String(jweData));
     JWEDecrypter decrypter = new ECDHDecrypter(privateKey);

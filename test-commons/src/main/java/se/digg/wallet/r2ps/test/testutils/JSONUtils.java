@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: EUPL-1.2
 
-package se.digg.wallet.r2ps.test.testUtils;
+package se.digg.wallet.r2ps.test.testutils;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -36,7 +36,7 @@ public class JSONUtils {
    *       JsonInclude.Include.NON_NULL}.
    * </ul>
    *
-   * This object is intended to be reused anywhere in the application to ensure consistent JSON
+   * <p>This object is intended to be reused anywhere in the application to ensure consistent JSON
    * processing behavior.
    */
   public static final ObjectMapper JSON_MAPPER =
@@ -94,7 +94,7 @@ public class JSONUtils {
     }
     if (publicKey instanceof ECPublicKey ecPublicKey) {
       ECParameterSpec params = ecPublicKey.getParams();
-      return new ECKey.Builder(Curve.forECParameterSpec(params), (ECPublicKey) publicKey).build();
+      return new ECKey.Builder(Curve.forECParameterSpec(params), ecPublicKey).build();
     }
     throw new NoSuchAlgorithmException("Public key type not supported");
   }

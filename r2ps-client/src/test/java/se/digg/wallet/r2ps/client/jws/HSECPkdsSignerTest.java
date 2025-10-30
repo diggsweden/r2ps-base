@@ -27,7 +27,7 @@ import se.digg.wallet.r2ps.client.jws.pkds.impl.PrivateKeyPKDSKeyDerivation;
 import se.digg.wallet.r2ps.commons.StaticResources;
 import se.digg.wallet.r2ps.test.data.TestCredentials;
 import se.digg.wallet.r2ps.test.data.TestMessage;
-import se.digg.wallet.r2ps.test.testUtils.JSONUtils;
+import se.digg.wallet.r2ps.test.testutils.JSONUtils;
 
 @Slf4j
 class HSECPkdsSignerTest {

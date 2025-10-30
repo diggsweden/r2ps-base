@@ -42,6 +42,21 @@ public class HSPKDSProvider extends BaseJWSProvider {
     SUPPORTED_PKDSSUITES = Collections.unmodifiableSet(pkdsSuites);
   }
 
+  /** The secret, {@code null} if specified as {@link SecretKey}. */
+  @Setter private byte[] secret;
+
+  /** The secret key, {@code null} if specified as byte array. */
+  @Setter private SecretKey secretKey;
+
+  public HSPKDSProvider(final JWSAlgorithm alg) throws JOSEException {
+
+    super(Collections.singleton(alg));
+
+    if (!SUPPORTED_ALGORITHMS.contains(alg)) {
+      throw new JOSEException("Unsupported EC DSA algorithm: " + alg);
+    }
+  }
+
   /**
    * Retrieves the public key from the provided PKDSPublicKey instance. The public key can be
    * extracted from the JSON Web Key (JWK) or the X.509 certificate contained in the PKDSPublicKey.
@@ -86,11 +101,17 @@ public class HSPKDSProvider extends BaseJWSProvider {
 
     Set<JWSAlgorithm> hmacAlgs = new LinkedHashSet<>();
 
-    if (secretLength >= 256) hmacAlgs.add(HS256_PKDS_ALGORITHM);
+    if (secretLength >= 256) {
+      hmacAlgs.add(HS256_PKDS_ALGORITHM);
+    }
 
-    if (secretLength >= 384) hmacAlgs.add(HS384_PKDS_ALGORITHM);
+    if (secretLength >= 384) {
+      hmacAlgs.add(HS384_PKDS_ALGORITHM);
+    }
 
-    if (secretLength >= 512) hmacAlgs.add(HS512_PKDS_ALGORITHM);
+    if (secretLength >= 512) {
+      hmacAlgs.add(HS512_PKDS_ALGORITHM);
+    }
 
     return Collections.unmodifiableSet(hmacAlgs);
   }
@@ -136,21 +157,6 @@ public class HSPKDSProvider extends BaseJWSProvider {
     } else {
       throw new JOSEException(
           AlgorithmSupportMessage.unsupportedJWSAlgorithm(alg, SUPPORTED_ALGORITHMS));
-    }
-  }
-
-  /** The secret, {@code null} if specified as {@link SecretKey}. */
-  @Setter private byte[] secret;
-
-  /** The secret key, {@code null} if specified as byte array. */
-  @Setter private SecretKey secretKey;
-
-  public HSPKDSProvider(final JWSAlgorithm alg) throws JOSEException {
-
-    super(Collections.singleton(alg));
-
-    if (!SUPPORTED_ALGORITHMS.contains(alg)) {
-      throw new JOSEException("Unsupported EC DSA algorithm: " + alg);
     }
   }
 

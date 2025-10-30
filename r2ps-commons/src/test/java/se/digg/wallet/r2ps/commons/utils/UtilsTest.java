@@ -50,10 +50,10 @@ class UtilsTest {
         new JWEEncryptionParams(recipientPrivateKey, EncryptionMethod.A256GCM);
     byte[] plainText = "1234".getBytes();
     log.debug("Plaintext: {}", new String(plainText, "UTF-8"));
-    final byte[] encryptedData = Utils.encryptJWE_ECDH(plainText, encryptionParams);
+    final byte[] encryptedData = Utils.encryptJWEECDH(plainText, encryptionParams);
     log.debug("Encrypted data: {}", new String(encryptedData, "UTF-8"));
     final byte[] decryptedData =
-        Utils.decryptJWE_ECDH(encryptedData, decryptionParams.staticPrivateRecipientKey());
+        Utils.decryptJWEECDH(encryptedData, decryptionParams.staticPrivateRecipientKey());
     log.debug("Decrypted data: {}", new String(decryptedData, "UTF-8"));
     assertArrayEquals(plainText, decryptedData);
   }

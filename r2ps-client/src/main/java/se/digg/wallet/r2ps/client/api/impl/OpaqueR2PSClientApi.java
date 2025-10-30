@@ -618,7 +618,7 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
         }
         if (EncryptOption.device == serviceType.encryptKey()) {
           decryptedPayload =
-              Utils.decryptJWE_ECDH(serviceData, encryptionParams.staticPrivateRecipientKey());
+              Utils.decryptJWEECDH(serviceData, encryptionParams.staticPrivateRecipientKey());
         }
         if (log.isDebugEnabled()) {
           log.debug(
@@ -660,7 +660,8 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
     if (!result.success()) {
       throw new ServiceResponseException(
           String.format(
-              "Service request of type '%s' under context '%s' failed with http code %d, error code %s and error message: %s",
+              "Service request of type '%s' under context '%s' failed with http code %d, error "
+                  + "code %s and error message: %s",
               serviceType,
               context,
               result.httpStatusCode(),
