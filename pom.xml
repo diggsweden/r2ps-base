@@ -1,6 +1,9 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<?xml version="1.0" encoding="UTF-8" ?>
+<project
+  xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+>
 
   <modelVersion>4.0.0</modelVersion>
 
@@ -182,7 +185,7 @@
             <id>enforce</id>
             <configuration>
               <rules>
-                <dependencyConvergence/>
+                <dependencyConvergence />
               </rules>
             </configuration>
             <goals>
@@ -233,6 +236,24 @@
         <artifactId>maven-javadoc-plugin</artifactId>
       </plugin>
 
+<!--        <plugin>-->
+<!--            <groupId>com.diffplug.spotless</groupId>-->
+<!--            <artifactId>spotless-maven-plugin</artifactId>-->
+<!--            <version>2.43.0</version> <configuration>-->
+<!--            <java>-->
+<!--                <googleJavaFormat>-->
+<!--                    <version>1.17.0</version>-->
+<!--                    <style>GOOGLE</style>-->
+<!--                </googleJavaFormat>-->
+<!--            </java>-->
+<!--        </configuration>-->
+<!--            <executions>-->
+<!--                <execution>-->
+<!--                    <goals>-->
+<!--                        <goal>check</goal> <goal>apply</goal> </goals>-->
+<!--                </execution>-->
+<!--            </executions>-->
+<!--        </plugin>-->
     </plugins>
 
   </build>
