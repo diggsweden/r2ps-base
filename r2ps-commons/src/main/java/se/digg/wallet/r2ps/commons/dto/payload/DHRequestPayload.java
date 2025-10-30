@@ -2,14 +2,13 @@ package se.digg.wallet.r2ps.commons.dto.payload;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import java.io.IOException;
+import java.security.PublicKey;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import se.digg.wallet.r2ps.commons.StaticResources;
-
-import java.io.IOException;
-import java.security.PublicKey;
 
 @Data
 @NoArgsConstructor

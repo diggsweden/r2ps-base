@@ -1,13 +1,12 @@
 package se.digg.wallet.r2ps.server.pake.opaque;
 
+import java.security.KeyPair;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import se.digg.crypto.opaque.crypto.OprfPrivateKey;
 import se.digg.crypto.opaque.server.OpaqueServer;
-
-import java.security.KeyPair;
 
 @Data
 @AllArgsConstructor

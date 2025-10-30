@@ -7,6 +7,7 @@ import com.nimbusds.jose.JOSEObjectType;
 import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.JWSObject;
 import com.nimbusds.jose.Payload;
+import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
 import se.digg.wallet.r2ps.commons.StaticResources;
 import se.digg.wallet.r2ps.commons.dto.EncryptOption;
@@ -17,30 +18,34 @@ import se.digg.wallet.r2ps.commons.dto.ServiceRequest;
 import se.digg.wallet.r2ps.commons.dto.payload.ExchangePayload;
 import se.digg.wallet.r2ps.commons.dto.servicetype.ServiceType;
 
-import java.util.Objects;
-
 @Slf4j
 public class ServiceExchangeFactory {
 
   private static final ObjectMapper mapper = StaticResources.SERVICE_EXCHANGE_OBJECT_MAPPER;
 
-  public String createServiceExchangeObject(ServiceType serviceType,
-      ServiceExchange exchangeWrapper, ExchangePayload<?> exchangePayload,
-      JWSSigningParams signerParams, JWEEncryptionParams encryptionParams)
+  public String createServiceExchangeObject(
+      ServiceType serviceType,
+      ServiceExchange exchangeWrapper,
+      ExchangePayload<?> exchangePayload,
+      JWSSigningParams signerParams,
+      JWEEncryptionParams encryptionParams)
       throws JsonProcessingException, JOSEException {
 
     Objects.requireNonNull(exchangeWrapper, "Protocol exchangeWrapper must not be null");
     Objects.requireNonNull(signerParams, "JWS signer parameters must not be null");
-    Objects.requireNonNull(encryptionParams,
+    Objects.requireNonNull(
+        encryptionParams,
         "Encryption parameters must not be null for this exchange type: " + serviceType.id());
 
-    byte[] serviceData = switch (serviceType.encryptKey()) {
-      case user -> Utils.encryptJWE(exchangePayload.serialize(), encryptionParams);
-      case device -> Utils.encryptJWE_ECDH(exchangePayload.serialize(), encryptionParams);
-    };
+    byte[] serviceData =
+        switch (serviceType.encryptKey()) {
+          case user -> Utils.encryptJWE(exchangePayload.serialize(), encryptionParams);
+          case device -> Utils.encryptJWE_ECDH(exchangePayload.serialize(), encryptionParams);
+        };
 
     if (log.isDebugEnabled()) {
-      log.debug("Preparing service {} payload with {} encryption",
+      log.debug(
+          "Preparing service {} payload with {} encryption",
           exchangeWrapper instanceof ServiceRequest ? "request" : "response",
           serviceType.encryptKey() == EncryptOption.user ? "session" : "device");
     }

@@ -1,12 +1,11 @@
 package se.digg.wallet.r2ps.server.pake.opaque;
 
+import java.time.Duration;
+import java.time.Instant;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import se.digg.crypto.opaque.server.ServerState;
 import se.digg.wallet.r2ps.commons.pake.opaque.PakeSessionRegistryRecord;
-
-import java.time.Duration;
-import java.time.Instant;
 
 @Data
 @NoArgsConstructor

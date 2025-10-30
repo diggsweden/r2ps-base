@@ -2,11 +2,10 @@ package se.digg.wallet.r2ps.server.pake.opaque.impl;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import se.digg.wallet.r2ps.server.pake.opaque.ClientRecordRegistry;
-
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
+import se.digg.wallet.r2ps.server.pake.opaque.ClientRecordRegistry;
 
 public class FileBackedClientRecordRegistry implements ClientRecordRegistry {
 
@@ -19,8 +18,7 @@ public class FileBackedClientRecordRegistry implements ClientRecordRegistry {
     this.backingFile = backingFile;
     if (backingFile != null && backingFile.exists()) {
       try {
-        this.clientRecords = objectMapper.readValue(backingFile, new TypeReference<>() {
-        });
+        this.clientRecords = objectMapper.readValue(backingFile, new TypeReference<>() {});
       } catch (Exception e) {
         throw new IllegalStateException("Could not read client records from file", e);
       }
@@ -61,5 +59,4 @@ public class FileBackedClientRecordRegistry implements ClientRecordRegistry {
       }
     }
   }
-
 }

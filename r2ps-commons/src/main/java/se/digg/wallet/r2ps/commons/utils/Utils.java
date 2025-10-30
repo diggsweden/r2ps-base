@@ -11,19 +11,17 @@ import com.nimbusds.jose.crypto.DirectDecrypter;
 import com.nimbusds.jose.crypto.DirectEncrypter;
 import com.nimbusds.jose.crypto.ECDHDecrypter;
 import com.nimbusds.jose.crypto.ECDHEncrypter;
+import java.io.IOException;
+import java.security.interfaces.ECPrivateKey;
+import java.text.ParseException;
 import org.bouncycastle.util.encoders.Hex;
 import se.digg.wallet.r2ps.commons.StaticResources;
 import se.digg.wallet.r2ps.commons.dto.JWEEncryptionParams;
 
-import java.io.IOException;
-import java.security.interfaces.ECPrivateKey;
-import java.text.ParseException;
-
 public class Utils {
 
   public static byte[] decryptJWE(byte[] jweData, JWEEncryptionParams decryptionParams)
-      throws JOSEException,
-      ParseException {
+      throws JOSEException, ParseException {
     JWEObject jweObject = JWEObject.parse(new String(jweData));
     JWEDecrypter decrypter = new DirectDecrypter(decryptionParams.key());
     jweObject.decrypt(decrypter);
@@ -38,16 +36,16 @@ public class Utils {
     JWEObject jweObject = new JWEObject(jweHeader, new Payload(jweData));
     jweObject.encrypt(encrypter);
     return jweObject.serialize().getBytes();
-
   }
 
   // Encrypt using ECDH-ES + AES-GCM with server’s static EC public key
   public static byte[] encryptJWE_ECDH(byte[] plaintext, JWEEncryptionParams encryptionParams)
       throws JOSEException {
     // Create JWE header with ECDH-ES algorithm and encryption method
-    JWEHeader header = new JWEHeader.Builder(JWEAlgorithm.ECDH_ES, encryptionParams.algorithm())
-        .contentType("application/octet-stream") // Optional
-        .build();
+    JWEHeader header =
+        new JWEHeader.Builder(JWEAlgorithm.ECDH_ES, encryptionParams.algorithm())
+            .contentType("application/octet-stream") // Optional
+            .build();
 
     // Create the JWE object with payload
     JWEObject jweObject = new JWEObject(header, new Payload(plaintext));
@@ -76,12 +74,13 @@ public class Utils {
    *
    * @param decryptedPayload the byte array to be formatted
    * @return a human-readable string representation of the byte array, either as pretty-printed
-   * JSON, plain text if printable, or hexadecimal if non-printable
+   *     JSON, plain text if printable, or hexadecimal if non-printable
    */
   public static String prettyPrintByteArray(final byte[] decryptedPayload) {
     try {
       // Try JSON format
-      return StaticResources.TIME_STAMP_SECONDS_MAPPER.writerWithDefaultPrettyPrinter()
+      return StaticResources.TIME_STAMP_SECONDS_MAPPER
+          .writerWithDefaultPrettyPrinter()
           .writeValueAsString(StaticResources.TIME_STAMP_SECONDS_MAPPER.readTree(decryptedPayload));
     } catch (IOException e) {
       if (isPrintable(decryptedPayload)) {
@@ -100,6 +99,4 @@ public class Utils {
     }
     return true;
   }
-
-
 }

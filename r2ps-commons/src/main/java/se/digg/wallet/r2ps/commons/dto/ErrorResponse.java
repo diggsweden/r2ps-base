@@ -13,6 +13,7 @@ import lombok.NoArgsConstructor;
 public class ErrorResponse {
   @JsonProperty("error_code")
   String errorCode;
+
   @JsonProperty("error_message")
   String message;
 }

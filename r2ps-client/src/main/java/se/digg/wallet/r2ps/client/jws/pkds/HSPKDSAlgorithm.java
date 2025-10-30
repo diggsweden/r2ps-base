@@ -1,10 +1,9 @@
 package se.digg.wallet.r2ps.client.jws.pkds;
 
 import com.nimbusds.jose.JWSAlgorithm;
+import java.util.Arrays;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-
-import java.util.Arrays;
 
 @Getter
 @AllArgsConstructor

@@ -1,7 +1,6 @@
 package se.digg.wallet.r2ps.client.jws.pkds;
 
 import com.nimbusds.jose.JOSEException;
-
 import java.security.interfaces.ECPublicKey;
 
 public interface PKDSKeyDerivation {
@@ -10,5 +9,4 @@ public interface PKDSKeyDerivation {
 
   byte[] deriveKey(PKDSHeaderParam pkdsHeaderParam, ECPublicKey publicKey, int minimumKeyByteLen)
       throws JOSEException;
-
 }

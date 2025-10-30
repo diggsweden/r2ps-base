@@ -2,13 +2,12 @@ package se.digg.wallet.r2ps.server.service.impl;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import se.digg.wallet.r2ps.server.service.ClientPublicKeyRecord;
-import se.digg.wallet.r2ps.server.service.ClientPublicKeyRegistry;
-import se.digg.wallet.r2ps.commons.StaticResources;
-
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
+import se.digg.wallet.r2ps.commons.StaticResources;
+import se.digg.wallet.r2ps.server.service.ClientPublicKeyRecord;
+import se.digg.wallet.r2ps.server.service.ClientPublicKeyRegistry;
 
 public class FileBackedClientPublicKeyRegistry implements ClientPublicKeyRegistry {
 
@@ -21,8 +20,7 @@ public class FileBackedClientPublicKeyRegistry implements ClientPublicKeyRegistr
     this.backingFile = backingFile;
     if (backingFile != null && backingFile.exists()) {
       try {
-        this.clientPublicKeyRecords = objectMapper.readValue(backingFile, new TypeReference<>() {
-        });
+        this.clientPublicKeyRecords = objectMapper.readValue(backingFile, new TypeReference<>() {});
       } catch (Exception e) {
         throw new IllegalStateException("Could not read client records from file", e);
       }
@@ -48,8 +46,8 @@ public class FileBackedClientPublicKeyRegistry implements ClientPublicKeyRegistr
   }
 
   @Override
-  public boolean setAuthorizationCode(final String clientId, final String kid,
-      final byte[] authorizationCode) {
+  public boolean setAuthorizationCode(
+      final String clientId, final String kid, final byte[] authorizationCode) {
     final ClientPublicKeyRecord clientPublicKeyRecord = getClientPublicKeyRecord(clientId, kid);
     if (clientPublicKeyRecord == null) {
       return false;
@@ -68,9 +66,10 @@ public class FileBackedClientPublicKeyRegistry implements ClientPublicKeyRegistr
   }
 
   @Override
-  public void registerClientPublicKey(final String clientId,
-      ClientPublicKeyRecord clientPublicKeyRecord) {
-    clientPublicKeyRecords.computeIfAbsent(clientId, k -> new HashMap<>())
+  public void registerClientPublicKey(
+      final String clientId, ClientPublicKeyRecord clientPublicKeyRecord) {
+    clientPublicKeyRecords
+        .computeIfAbsent(clientId, k -> new HashMap<>())
         .put(clientPublicKeyRecord.getKid(), clientPublicKeyRecord);
     storeClientRecords();
   }
@@ -84,5 +83,4 @@ public class FileBackedClientPublicKeyRegistry implements ClientPublicKeyRegistr
       }
     }
   }
-
 }

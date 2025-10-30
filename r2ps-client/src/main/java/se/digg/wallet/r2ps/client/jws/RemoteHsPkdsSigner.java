@@ -15,8 +15,12 @@ public class RemoteHsPkdsSigner extends HSPKDSProvider implements JWSSigner {
   private final String hsmKeyIdentifier;
   private final String sessionId;
 
-  public RemoteHsPkdsSigner(final HSPKDSAlgorithm hsPkdsAlgorithm, final R2PSClientApi clientApi,
-      final String hsmContext, final String hsmKeyIdentifier, final String sessionId)
+  public RemoteHsPkdsSigner(
+      final HSPKDSAlgorithm hsPkdsAlgorithm,
+      final R2PSClientApi clientApi,
+      final String hsmContext,
+      final String hsmKeyIdentifier,
+      final String sessionId)
       throws JOSEException {
     super(hsPkdsAlgorithm.getAlg());
     this.clientApi = clientApi;
@@ -29,5 +33,4 @@ public class RemoteHsPkdsSigner extends HSPKDSProvider implements JWSSigner {
   public Base64URL sign(final JWSHeader header, final byte[] signingInput) throws JOSEException {
     return null;
   }
-
 }

@@ -1,4 +1,2 @@
-/**
- * Implementation of PAKE protocols
- */
+/** Implementation of PAKE protocols */
 package se.digg.wallet.r2ps.server.pake;

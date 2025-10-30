@@ -1,13 +1,12 @@
 package se.digg.wallet.r2ps.client.jws.pkds.impl;
 
 import com.nimbusds.jose.JOSEException;
-import se.digg.wallet.r2ps.client.jws.pkds.PKDSSuite;
-
-import javax.crypto.KeyAgreement;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
+import javax.crypto.KeyAgreement;
+import se.digg.wallet.r2ps.client.jws.pkds.PKDSSuite;
 
 public class PrivateKeyPKDSKeyDerivation extends AbstractEcdhHkdfKeyDerivation {
 
@@ -23,8 +22,7 @@ public class PrivateKeyPKDSKeyDerivation extends AbstractEcdhHkdfKeyDerivation {
   }
 
   @Override
-  protected byte[] diffieHellman(final ECPublicKey publicKey)
-      throws JOSEException {
+  protected byte[] diffieHellman(final ECPublicKey publicKey) throws JOSEException {
     try {
       KeyAgreement keyAgreement = KeyAgreement.getInstance("ECDH");
       keyAgreement.init(dhPrivateKey);

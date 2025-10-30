@@ -43,8 +43,8 @@ public class InMemoryPakeSessionRegistry<T extends PakeSessionRegistryRecord>
 
   @Override
   public void addPakeSession(final T pakeSessionRegistryRecord) {
-    Objects.requireNonNull(pakeSessionRegistryRecord.getPakeSessionId(),
-        "The pakeSessionId is null");
+    Objects.requireNonNull(
+        pakeSessionRegistryRecord.getPakeSessionId(), "The pakeSessionId is null");
     Objects.requireNonNull(pakeSessionRegistryRecord.getClientId(), "The clientId is null");
     Objects.requireNonNull(pakeSessionRegistryRecord.getKid(), "The key identifier is null");
     pakeSessions.put(pakeSessionRegistryRecord.getPakeSessionId(), pakeSessionRegistryRecord);
@@ -62,9 +62,9 @@ public class InMemoryPakeSessionRegistry<T extends PakeSessionRegistryRecord>
 
   @Override
   public void purgeRecords() {
-    this.pakeSessions = pakeSessions.entrySet().stream()
-        .filter(entry -> Instant.now().isBefore(entry.getValue().getExpirationTime()))
-        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+    this.pakeSessions =
+        pakeSessions.entrySet().stream()
+            .filter(entry -> Instant.now().isBefore(entry.getValue().getExpirationTime()))
+            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
   }
-
 }

@@ -9,5 +9,4 @@ public interface ServiceRequestDispatcher {
       throws ServiceRequestHandlingException;
 
   boolean supports(String context);
-
 }

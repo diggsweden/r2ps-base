@@ -14,6 +14,7 @@ import lombok.NoArgsConstructor;
 public class PKDSParams {
   @JsonProperty("info")
   private Base64URL info;
+
   @JsonProperty("salt")
   private Base64URL salt;
 }

@@ -1,13 +1,12 @@
 package se.digg.wallet.r2ps.server.service;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.security.PublicKey;
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.security.PublicKey;
-import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -34,4 +33,3 @@ public class ClientPublicKeyRecord {
   @JsonProperty("authorization")
   byte[] authorization;
 }
-

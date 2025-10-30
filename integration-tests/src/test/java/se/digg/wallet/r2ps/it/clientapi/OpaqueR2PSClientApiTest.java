@@ -1,5 +1,10 @@
 package se.digg.wallet.r2ps.it.clientapi;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import com.nimbusds.jose.JOSEObjectType;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
@@ -8,6 +13,19 @@ import com.nimbusds.jose.JWSSigner;
 import com.nimbusds.jose.JWSVerifier;
 import com.nimbusds.jose.Payload;
 import com.nimbusds.jose.crypto.ECDSAVerifier;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.Security;
+import java.security.Signature;
+import java.security.interfaces.ECPrivateKey;
+import java.security.interfaces.ECPublicKey;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import javax.crypto.KeyAgreement;
 import lombok.extern.slf4j.Slf4j;
 import org.bouncycastle.util.encoders.Base64;
 import org.bouncycastle.util.encoders.Hex;
@@ -20,7 +38,17 @@ import se.digg.wallet.r2ps.client.api.ServiceExchangeConnector;
 import se.digg.wallet.r2ps.client.api.ServiceResult;
 import se.digg.wallet.r2ps.client.api.impl.OpaqueR2PSClientApi;
 import se.digg.wallet.r2ps.client.api.impl.OpaqueR2PSConfiguration;
+import se.digg.wallet.r2ps.client.jws.HSECPkdsSigner;
+import se.digg.wallet.r2ps.client.jws.HSECPkdsVerifier;
+import se.digg.wallet.r2ps.client.jws.RemoteHsmECDSASigner;
+import se.digg.wallet.r2ps.client.jws.pkds.HSPKDSAlgorithm;
+import se.digg.wallet.r2ps.client.jws.pkds.PKDSHeaderParam;
+import se.digg.wallet.r2ps.client.jws.pkds.PKDSPublicKey;
+import se.digg.wallet.r2ps.client.jws.pkds.PKDSSuite;
+import se.digg.wallet.r2ps.client.jws.pkds.impl.PrivateKeyPKDSKeyDerivation;
+import se.digg.wallet.r2ps.client.jws.pkds.impl.RemoteHsmPKDSKeyDerivation;
 import se.digg.wallet.r2ps.client.pake.opaque.ClientPakeRecord;
+import se.digg.wallet.r2ps.commons.StaticResources;
 import se.digg.wallet.r2ps.commons.dto.payload.ByteArrayPayload;
 import se.digg.wallet.r2ps.commons.dto.payload.DHRequestPayload;
 import se.digg.wallet.r2ps.commons.dto.payload.HSMParams;
@@ -45,18 +73,8 @@ import se.digg.wallet.r2ps.server.pake.opaque.impl.FileBackedClientRecordRegistr
 import se.digg.wallet.r2ps.server.service.ClientPublicKeyRecord;
 import se.digg.wallet.r2ps.server.service.ClientPublicKeyRegistry;
 import se.digg.wallet.r2ps.server.service.OpaqueServiceRequestHandlerConfiguration;
-import se.digg.wallet.r2ps.commons.StaticResources;
-import se.digg.wallet.r2ps.server.service.impl.FileBackedClientPublicKeyRegistry;
 import se.digg.wallet.r2ps.server.service.impl.DefaultServiceRequestHandler;
-import se.digg.wallet.r2ps.client.jws.HSECPkdsSigner;
-import se.digg.wallet.r2ps.client.jws.HSECPkdsVerifier;
-import se.digg.wallet.r2ps.client.jws.RemoteHsmECDSASigner;
-import se.digg.wallet.r2ps.client.jws.pkds.HSPKDSAlgorithm;
-import se.digg.wallet.r2ps.client.jws.pkds.PKDSHeaderParam;
-import se.digg.wallet.r2ps.client.jws.pkds.PKDSPublicKey;
-import se.digg.wallet.r2ps.client.jws.pkds.PKDSSuite;
-import se.digg.wallet.r2ps.client.jws.pkds.impl.PrivateKeyPKDSKeyDerivation;
-import se.digg.wallet.r2ps.client.jws.pkds.impl.RemoteHsmPKDSKeyDerivation;
+import se.digg.wallet.r2ps.server.service.impl.FileBackedClientPublicKeyRegistry;
 import se.digg.wallet.r2ps.server.service.pinauthz.impl.CodeMatchPinAuthorization;
 import se.digg.wallet.r2ps.server.service.servicehandlers.OpaqueServiceHandler;
 import se.digg.wallet.r2ps.server.service.servicehandlers.ServiceTypeHandler;
@@ -64,25 +82,6 @@ import se.digg.wallet.r2ps.server.service.servicehandlers.SessionServiceHandler;
 import se.digg.wallet.r2ps.test.data.TestCredentials;
 import se.digg.wallet.r2ps.test.data.TestMessage;
 import se.digg.wallet.r2ps.test.testUtils.JSONUtils;
-
-import javax.crypto.KeyAgreement;
-import java.security.PrivateKey;
-import java.security.PublicKey;
-import java.security.Security;
-import java.security.Signature;
-import java.security.interfaces.ECPrivateKey;
-import java.security.interfaces.ECPublicKey;
-import java.time.Duration;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Slf4j
 class OpaqueR2PSClientApiTest {
@@ -106,24 +105,36 @@ class OpaqueR2PSClientApiTest {
     serverIdentity = "https://example.com/oaque/server";
     kid =
         Base64.toBase64String(ECUtils.serializePublicKey(TestCredentials.p256keyPair.getPublic()));
-    kidHsm = Base64.toBase64String(
-        ECUtils.serializePublicKey(TestCredentials.walletHsmAccessP256keyPair.getPublic()));
+    kidHsm =
+        Base64.toBase64String(
+            ECUtils.serializePublicKey(TestCredentials.walletHsmAccessP256keyPair.getPublic()));
     serviceTypeRegistry = new ServiceTypeRegistry();
 
     clientPakeSessionRegistry = new InMemoryPakeSessionRegistry<>();
 
-    clientApi = new OpaqueR2PSClientApi(OpaqueR2PSConfiguration.builder()
-        .clientIdentity(clientIdentity)
-        .clientPakeSessionRegistry(clientPakeSessionRegistry)
-        .contextSessionDuration(Duration.ofMinutes(5))
-        .serviceExchangeConnector(createTestConnector())
-        .serviceTypeRegistry(serviceTypeRegistry)
-        .addContext("test", kid, TestCredentials.p256keyPair, JWSAlgorithm.ES256, serverIdentity,
-            TestCredentials.serverOprfKeyPair.getPublic())
-        .addContext("hsm", kidHsm, TestCredentials.walletHsmAccessP256keyPair, JWSAlgorithm.ES256,
-            serverIdentity,
-            TestCredentials.serverOprfKeyPair.getPublic())
-        .build());
+    clientApi =
+        new OpaqueR2PSClientApi(
+            OpaqueR2PSConfiguration.builder()
+                .clientIdentity(clientIdentity)
+                .clientPakeSessionRegistry(clientPakeSessionRegistry)
+                .contextSessionDuration(Duration.ofMinutes(5))
+                .serviceExchangeConnector(createTestConnector())
+                .serviceTypeRegistry(serviceTypeRegistry)
+                .addContext(
+                    "test",
+                    kid,
+                    TestCredentials.p256keyPair,
+                    JWSAlgorithm.ES256,
+                    serverIdentity,
+                    TestCredentials.serverOprfKeyPair.getPublic())
+                .addContext(
+                    "hsm",
+                    kidHsm,
+                    TestCredentials.walletHsmAccessP256keyPair,
+                    JWSAlgorithm.ES256,
+                    serverIdentity,
+                    TestCredentials.serverOprfKeyPair.getPublic())
+                .build());
   }
 
   /**
@@ -133,21 +144,26 @@ class OpaqueR2PSClientApiTest {
    *
    * @return an instance of {@link ServiceExchangeConnector}, specifically a test implementation
    * @throws Exception if any error occurs during the creation or configuration of the test
-   *                   connector
+   *     connector
    */
-  private static ServiceExchangeConnector createTestConnector()
-      throws Exception {
+  private static ServiceExchangeConnector createTestConnector() throws Exception {
 
     // Create a public key registry initiated for each test with no authorization codes.
     clientPublicKeyRegistry = new FileBackedClientPublicKeyRegistry(null);
-    clientPublicKeyRegistry.registerClientPublicKey(clientIdentity, ClientPublicKeyRecord.builder()
-        .kid(kid)
-        .publicKey(TestCredentials.p256keyPair.getPublic())
-        .supportedContexts(List.of("test")).build());
-    clientPublicKeyRegistry.registerClientPublicKey(clientIdentity, ClientPublicKeyRecord.builder()
-        .kid(kidHsm)
-        .publicKey(TestCredentials.walletHsmAccessP256keyPair.getPublic())
-        .supportedContexts(List.of("hsm")).build());
+    clientPublicKeyRegistry.registerClientPublicKey(
+        clientIdentity,
+        ClientPublicKeyRecord.builder()
+            .kid(kid)
+            .publicKey(TestCredentials.p256keyPair.getPublic())
+            .supportedContexts(List.of("test"))
+            .build());
+    clientPublicKeyRegistry.registerClientPublicKey(
+        clientIdentity,
+        ClientPublicKeyRecord.builder()
+            .kid(kidHsm)
+            .publicKey(TestCredentials.walletHsmAccessP256keyPair.getPublic())
+            .supportedContexts(List.of("hsm"))
+            .build());
 
     PakeSessionRegistry<ServerPakeRecord> serverPakeSessionRegistry =
         new InMemoryPakeSessionRegistry<>();
@@ -165,26 +181,36 @@ class OpaqueR2PSClientApiTest {
     log.info("Server OPRFSeed: {}", Hex.toHexString(oprfSeed));
 
     serviceTypeHandlerList.add(
-        new OpaqueServiceHandler(List.of("hsm", "test"), new CodeMatchPinAuthorization(clientPublicKeyRegistry),
-            OpaqueConfiguration.defaultConfiguration(), serverIdentity, oprfSeed, TestCredentials.serverOprfKeyPair,
-            serverPakeSessionRegistry, clientRecordRegistry, sessionTaskRegistry, Duration.ofMinutes(15), Duration.ofSeconds(5)));
+        new OpaqueServiceHandler(
+            List.of("hsm", "test"),
+            new CodeMatchPinAuthorization(clientPublicKeyRegistry),
+            OpaqueConfiguration.defaultConfiguration(),
+            serverIdentity,
+            oprfSeed,
+            TestCredentials.serverOprfKeyPair,
+            serverPakeSessionRegistry,
+            clientRecordRegistry,
+            sessionTaskRegistry,
+            Duration.ofMinutes(15),
+            Duration.ofSeconds(5)));
 
-    serviceTypeHandlerList.add(
-        new SessionServiceHandler(serverPakeSessionRegistry));
+    serviceTypeHandlerList.add(new SessionServiceHandler(serverPakeSessionRegistry));
 
     // Create a service request handler that can process service requests from the client
     DefaultServiceRequestHandler opaqueServiceRequestHandler =
-        new DefaultServiceRequestHandler(OpaqueServiceRequestHandlerConfiguration.builder()
-            .serverKeyPair(TestCredentials.serverOprfKeyPair)
-            .serverJwsAlgorithm(JWSAlgorithm.ES256)
-            .serverPakeSessionRegistry(serverPakeSessionRegistry)
-            .clientPublicKeyRegistry(clientPublicKeyRegistry)
-            .serviceTypeRegistry(serviceTypeRegistry)
-            .serviceTypeHandlers(serviceTypeHandlerList)
-            .replayChecker(new TestReplayChecker())
-            .build());
+        new DefaultServiceRequestHandler(
+            OpaqueServiceRequestHandlerConfiguration.builder()
+                .serverKeyPair(TestCredentials.serverOprfKeyPair)
+                .serverJwsAlgorithm(JWSAlgorithm.ES256)
+                .serverPakeSessionRegistry(serverPakeSessionRegistry)
+                .clientPublicKeyRegistry(clientPublicKeyRegistry)
+                .serviceTypeRegistry(serviceTypeRegistry)
+                .serviceTypeHandlers(serviceTypeHandlerList)
+                .replayChecker(new TestReplayChecker())
+                .build());
 
-    // Create an HTTP connector that produces service responses using an internal request handler instead of sending them to a server
+    // Create an HTTP connector that produces service responses using an internal request handler
+    // instead of sending them to a server
     return new TestConnector(opaqueServiceRequestHandler);
   }
 
@@ -221,34 +247,51 @@ class OpaqueR2PSClientApiTest {
 
     // List available HSM keys
     final List<ListKeysResponsePayload.KeyInfo> keyInfo0 =
-        clientApi.userAuthenticatedService(ServiceType.HSM_LIST_KEYS, JsonPayload.builder()
-                .add(HSMParams.CURVE, List.of())
-                .build(),
-            "hsm", hsmSessionId).getPayload(ListKeysResponsePayload.class).getKeyInfo();
+        clientApi
+            .userAuthenticatedService(
+                ServiceType.HSM_LIST_KEYS,
+                JsonPayload.builder().add(HSMParams.CURVE, List.of()).build(),
+                "hsm",
+                hsmSessionId)
+            .getPayload(ListKeysResponsePayload.class)
+            .getKeyInfo();
     assertEquals(0, keyInfo0.size());
-    clientApi.userAuthenticatedService(ServiceType.HSM_KEYGEN, JsonPayload.builder()
-        .add(HSMParams.CURVE, "P-256")
-        .build(), "hsm", hsmSessionId);
+    clientApi.userAuthenticatedService(
+        ServiceType.HSM_KEYGEN,
+        JsonPayload.builder().add(HSMParams.CURVE, "P-256").build(),
+        "hsm",
+        hsmSessionId);
     final List<ListKeysResponsePayload.KeyInfo> keyInfo1 =
-        clientApi.userAuthenticatedService(ServiceType.HSM_LIST_KEYS, JsonPayload.builder()
-                .add(HSMParams.CURVE, List.of())
-                .build(),
-            "hsm", hsmSessionId).getPayload(ListKeysResponsePayload.class).getKeyInfo();
+        clientApi
+            .userAuthenticatedService(
+                ServiceType.HSM_LIST_KEYS,
+                JsonPayload.builder().add(HSMParams.CURVE, List.of()).build(),
+                "hsm",
+                hsmSessionId)
+            .getPayload(ListKeysResponsePayload.class)
+            .getKeyInfo();
     assertEquals(1, keyInfo1.size());
-    log.info("Available HSM keys:\n{}",
-        StaticResources.SERVICE_EXCHANGE_OBJECT_MAPPER.writerWithDefaultPrettyPrinter()
+    log.info(
+        "Available HSM keys:\n{}",
+        StaticResources.SERVICE_EXCHANGE_OBJECT_MAPPER
+            .writerWithDefaultPrettyPrinter()
             .writeValueAsString(keyInfo1));
 
     String hsmKidP256 = keyInfo1.getFirst().getKid();
 
     // Test DH
     byte[] sharedSecret =
-        clientApi.userAuthenticatedService(ServiceType.HSM_ECDH,
-            DHRequestPayload.builder()
-                .kid(hsmKidP256)
-                .publicKey(TestCredentials.p256keyPair.getPublic())
-                .build(),
-            "hsm", hsmSessionId).getPayload(ByteArrayPayload.class).getByteArrayValue();
+        clientApi
+            .userAuthenticatedService(
+                ServiceType.HSM_ECDH,
+                DHRequestPayload.builder()
+                    .kid(hsmKidP256)
+                    .publicKey(TestCredentials.p256keyPair.getPublic())
+                    .build(),
+                "hsm",
+                hsmSessionId)
+            .getPayload(ByteArrayPayload.class)
+            .getByteArrayValue();
 
     PublicKey hsmPublic = keyInfo1.getFirst().getPublicKey();
     PrivateKey clientPrivate = TestCredentials.p256keyPair.getPrivate();
@@ -265,11 +308,13 @@ class OpaqueR2PSClientApiTest {
 
     // Sign
     byte[] signatureValue =
-        clientApi.userAuthenticatedService(ServiceType.HSM_ECDSA,
-                SignRequestPayload.builder()
-                    .kid(hsmKidP256)
-                    .tbsHash(message, "SHA-256")
-                    .build(), "hsm", hsmSessionId).getPayload(ByteArrayPayload.class)
+        clientApi
+            .userAuthenticatedService(
+                ServiceType.HSM_ECDSA,
+                SignRequestPayload.builder().kid(hsmKidP256).tbsHash(message, "SHA-256").build(),
+                "hsm",
+                hsmSessionId)
+            .getPayload(ByteArrayPayload.class)
             .getByteArrayValue();
     // Verify
     Signature sig = Signature.getInstance("SHA256withECDSA", "BC");
@@ -278,14 +323,17 @@ class OpaqueR2PSClientApiTest {
     assertTrue(sig.verify(signatureValue));
 
     // Check context protection
-    final ServiceResult failureResult = clientApi.userAuthenticatedService(ServiceType.HSM_ECDSA,
-        SignRequestPayload.builder()
-            .kid(hsmKidP256)
-            .tbsHash(message, "SHA-256")
-            .build(), "test", testSessionId);
+    final ServiceResult failureResult =
+        clientApi.userAuthenticatedService(
+            ServiceType.HSM_ECDSA,
+            SignRequestPayload.builder().kid(hsmKidP256).tbsHash(message, "SHA-256").build(),
+            "test",
+            testSessionId);
     assertFalse(failureResult.success());
-    log.info("Context protection failed as expected with error code {} and message: {}",
-        failureResult.errorResponse().getErrorCode(), failureResult.errorResponse().getMessage());
+    log.info(
+        "Context protection failed as expected with error code {} and message: {}",
+        failureResult.errorResponse().getErrorCode(),
+        failureResult.errorResponse().getMessage());
   }
 
   @Test
@@ -297,7 +345,8 @@ class OpaqueR2PSClientApiTest {
     clientApi.registerPin("1234", "hsm", "987654321".getBytes());
 
     // Authenticate with the changed PIN
-    final String hsmSessionId = clientApi.createSession("1234", "hsm", "sign", Duration.ofSeconds(30)).getPakeSessionId();
+    final String hsmSessionId =
+        clientApi.createSession("1234", "hsm", "sign", Duration.ofSeconds(30)).getPakeSessionId();
     final ClientPakeRecord pakeSession = clientPakeSessionRegistry.getPakeSession(hsmSessionId);
     assertEquals("hsm", pakeSession.getContext());
     assertEquals("sign", pakeSession.getRequestedSessionTaskId());
@@ -306,33 +355,47 @@ class OpaqueR2PSClientApiTest {
 
     // Create signing keys
     final List<ListKeysResponsePayload.KeyInfo> p256HsmKeyList =
-        clientApi.userAuthenticatedService(ServiceType.HSM_LIST_KEYS,
-            JsonPayload.builder().add(HSMParams.CURVE, List.of("P-256")).build(), "hsm",
-            hsmSessionId).getPayload(
-            ListKeysResponsePayload.class).getKeyInfo();
+        clientApi
+            .userAuthenticatedService(
+                ServiceType.HSM_LIST_KEYS,
+                JsonPayload.builder().add(HSMParams.CURVE, List.of("P-256")).build(),
+                "hsm",
+                hsmSessionId)
+            .getPayload(ListKeysResponsePayload.class)
+            .getKeyInfo();
 
     if (p256HsmKeyList.isEmpty()) {
       clientApi.userAuthenticatedService(
-          ServiceType.HSM_KEYGEN, JsonPayload.builder().add(HSMParams.CURVE, "P-256").build(),
+          ServiceType.HSM_KEYGEN,
+          JsonPayload.builder().add(HSMParams.CURVE, "P-256").build(),
           "hsm",
           hsmSessionId);
     }
     clientApi.userAuthenticatedService(
-        ServiceType.HSM_KEYGEN, JsonPayload.builder().add(HSMParams.CURVE, "P-384").build(), "hsm",
+        ServiceType.HSM_KEYGEN,
+        JsonPayload.builder().add(HSMParams.CURVE, "P-384").build(),
+        "hsm",
         hsmSessionId);
     clientApi.userAuthenticatedService(
-        ServiceType.HSM_KEYGEN, JsonPayload.builder().add(HSMParams.CURVE, "P-521").build(), "hsm",
+        ServiceType.HSM_KEYGEN,
+        JsonPayload.builder().add(HSMParams.CURVE, "P-521").build(),
+        "hsm",
         hsmSessionId);
     final ServiceResult serviceResult =
-        clientApi.userAuthenticatedService(ServiceType.HSM_LIST_KEYS, JsonPayload.builder()
-            .add(HSMParams.CURVE, List.of()).build(), "hsm", hsmSessionId);
+        clientApi.userAuthenticatedService(
+            ServiceType.HSM_LIST_KEYS,
+            JsonPayload.builder().add(HSMParams.CURVE, List.of()).build(),
+            "hsm",
+            hsmSessionId);
 
     // Retrieve hsm key info
-    final Map<String, ListKeysResponsePayload.KeyInfo> keyInfoMap = serviceResult.getPayload(
-            ListKeysResponsePayload.class).getKeyInfo().stream()
-        .collect(
-            Collectors.toMap(ListKeysResponsePayload.KeyInfo::getCurveName, keyInfo -> keyInfo,
-                (existing, replacement) -> replacement));
+    final Map<String, ListKeysResponsePayload.KeyInfo> keyInfoMap =
+        serviceResult.getPayload(ListKeysResponsePayload.class).getKeyInfo().stream()
+            .collect(
+                Collectors.toMap(
+                    ListKeysResponsePayload.KeyInfo::getCurveName,
+                    keyInfo -> keyInfo,
+                    (existing, replacement) -> replacement));
 
     log.info("Signing with P-256 key");
     jwsSign(JWSAlgorithm.ES256, keyInfoMap.get("P-256"), "hsm", hsmSessionId);
@@ -341,133 +404,184 @@ class OpaqueR2PSClientApiTest {
     log.info("Signing with P-521 key");
     jwsSign(JWSAlgorithm.ES512, keyInfoMap.get("P-521"), "hsm", hsmSessionId);
 
-    PKDSHeaderParam clientPkdsHeaderParam = PKDSHeaderParam.builder()
-        .suite(PKDSSuite.ECDH_HKDF_SHA256)
-        .producerPublicKey(PKDSPublicKey.builder()
-            .jwk(JSONUtils.getJWKfromPublicKey(keyInfoMap.get("P-256").getPublicKey()))
-            .build())
-        .recipientPublicKey(PKDSPublicKey.builder()
-            .jwk(JSONUtils.getJWKfromPublicKey(TestCredentials.serverKeyPair.getPublic()))
-            .build())
-        .build();
+    PKDSHeaderParam clientPkdsHeaderParam =
+        PKDSHeaderParam.builder()
+            .suite(PKDSSuite.ECDH_HKDF_SHA256)
+            .producerPublicKey(
+                PKDSPublicKey.builder()
+                    .jwk(JSONUtils.getJWKfromPublicKey(keyInfoMap.get("P-256").getPublicKey()))
+                    .build())
+            .recipientPublicKey(
+                PKDSPublicKey.builder()
+                    .jwk(JSONUtils.getJWKfromPublicKey(TestCredentials.serverKeyPair.getPublic()))
+                    .build())
+            .build();
 
-    hsPkdsClientSign(HSPKDSAlgorithm.HS256_PKDS, clientPkdsHeaderParam, keyInfoMap.get("P-256"),
-        "hsm", hsmSessionId);
+    hsPkdsClientSign(
+        HSPKDSAlgorithm.HS256_PKDS,
+        clientPkdsHeaderParam,
+        keyInfoMap.get("P-256"),
+        "hsm",
+        hsmSessionId);
 
-    PKDSHeaderParam serverPkdsHeaderParam = PKDSHeaderParam.builder()
-        .suite(PKDSSuite.ECDH_HKDF_SHA256)
-        .producerPublicKey(PKDSPublicKey.builder()
-            .jwk(JSONUtils.getJWKfromPublicKey(TestCredentials.serverKeyPair.getPublic()))
-            .build())
-        .recipientPublicKey(PKDSPublicKey.builder()
-            .jwk(JSONUtils.getJWKfromPublicKey(keyInfoMap.get("P-256").getPublicKey()))
-            .build())
-        .build();
+    PKDSHeaderParam serverPkdsHeaderParam =
+        PKDSHeaderParam.builder()
+            .suite(PKDSSuite.ECDH_HKDF_SHA256)
+            .producerPublicKey(
+                PKDSPublicKey.builder()
+                    .jwk(JSONUtils.getJWKfromPublicKey(TestCredentials.serverKeyPair.getPublic()))
+                    .build())
+            .recipientPublicKey(
+                PKDSPublicKey.builder()
+                    .jwk(JSONUtils.getJWKfromPublicKey(keyInfoMap.get("P-256").getPublicKey()))
+                    .build())
+            .build();
 
-    hsPkdsServerSign(HSPKDSAlgorithm.HS256_PKDS, serverPkdsHeaderParam, keyInfoMap.get("P-256"),
-        "hsm", hsmSessionId);
-
+    hsPkdsServerSign(
+        HSPKDSAlgorithm.HS256_PKDS,
+        serverPkdsHeaderParam,
+        keyInfoMap.get("P-256"),
+        "hsm",
+        hsmSessionId);
   }
 
-  void jwsSign(JWSAlgorithm jwsAlgorithm, ListKeysResponsePayload.KeyInfo keyInfo, String context,
+  void jwsSign(
+      JWSAlgorithm jwsAlgorithm,
+      ListKeysResponsePayload.KeyInfo keyInfo,
+      String context,
       String sessionId)
       throws Exception {
     // create signer
-    RemoteHsmECDSASigner remoteHsmECDSASigner = new RemoteHsmECDSASigner(clientApi, context,
-        keyInfo.getKid(), jwsAlgorithm, sessionId);
+    RemoteHsmECDSASigner remoteHsmECDSASigner =
+        new RemoteHsmECDSASigner(clientApi, context, keyInfo.getKid(), jwsAlgorithm, sessionId);
 
     // create signature
-    String message = StaticResources.OBJECT_MAPPER.writeValueAsString(
-        new StringPayload("This message will be signed"));
-    JWSHeader header = new JWSHeader.Builder(jwsAlgorithm)
-        .type(JOSEObjectType.JOSE)
-        .keyID(keyInfo.getKid())
-        .build();
+    String message =
+        StaticResources.OBJECT_MAPPER.writeValueAsString(
+            new StringPayload("This message will be signed"));
+    JWSHeader header =
+        new JWSHeader.Builder(jwsAlgorithm)
+            .type(JOSEObjectType.JOSE)
+            .keyID(keyInfo.getKid())
+            .build();
     JWSObject jwsObject = new JWSObject(header, new Payload(message));
     jwsObject.sign(remoteHsmECDSASigner);
     final String remoteSignedJws = jwsObject.serialize();
     log.info("Remote signed JWS\n{}", remoteSignedJws);
 
-    log.info("Signed JWS header:\n{}",
-        StaticResources.SERVICE_EXCHANGE_OBJECT_MAPPER.writerWithDefaultPrettyPrinter()
+    log.info(
+        "Signed JWS header:\n{}",
+        StaticResources.SERVICE_EXCHANGE_OBJECT_MAPPER
+            .writerWithDefaultPrettyPrinter()
             .writeValueAsString(jwsObject.getHeader().toJSONObject()));
-    log.info("Signed JWS payload:\n{}",
-        StaticResources.SERVICE_EXCHANGE_OBJECT_MAPPER.writerWithDefaultPrettyPrinter()
+    log.info(
+        "Signed JWS payload:\n{}",
+        StaticResources.SERVICE_EXCHANGE_OBJECT_MAPPER
+            .writerWithDefaultPrettyPrinter()
             .writeValueAsString(jwsObject.getPayload().toJSONObject()));
 
     // Verify Signature
     JWSVerifier verifier = new ECDSAVerifier((ECPublicKey) keyInfo.getPublicKey());
     assertTrue(jwsObject.verify(verifier));
     log.info("Remote signature verified");
-
   }
 
-  void hsPkdsClientSign(HSPKDSAlgorithm algorithm, PKDSHeaderParam pkdsHeaderParam,
-      ListKeysResponsePayload.KeyInfo keyInfo, String context, String sessionId) throws Exception {
+  void hsPkdsClientSign(
+      HSPKDSAlgorithm algorithm,
+      PKDSHeaderParam pkdsHeaderParam,
+      ListKeysResponsePayload.KeyInfo keyInfo,
+      String context,
+      String sessionId)
+      throws Exception {
 
-    JWSSigner signer = new HSECPkdsSigner(algorithm,
-        new RemoteHsmPKDSKeyDerivation(clientApi, context, keyInfo.getKid(), sessionId));
+    JWSSigner signer =
+        new HSECPkdsSigner(
+            algorithm,
+            new RemoteHsmPKDSKeyDerivation(clientApi, context, keyInfo.getKid(), sessionId));
     log.info("Client signing JWS with HS-PKDS");
 
     // create signature
-    String message = StaticResources.OBJECT_MAPPER.writeValueAsString(TestMessage.builder()
-        .message("This message will be signed")
-        .build());
-    JWSHeader header = new JWSHeader.Builder(algorithm.getAlg())
-        .type(JOSEObjectType.JOSE)
-        .customParam(HSECPkdsSigner.PKDS_HEADER_PARAM, pkdsHeaderParam.toJsonObject())
-        .build();
+    String message =
+        StaticResources.OBJECT_MAPPER.writeValueAsString(
+            TestMessage.builder().message("This message will be signed").build());
+    JWSHeader header =
+        new JWSHeader.Builder(algorithm.getAlg())
+            .type(JOSEObjectType.JOSE)
+            .customParam(HSECPkdsSigner.PKDS_HEADER_PARAM, pkdsHeaderParam.toJsonObject())
+            .build();
     JWSObject jwsObject = new JWSObject(header, new Payload(message));
     jwsObject.sign(signer);
     final String remoteSignedJws = jwsObject.serialize();
     log.info("Client signed JWS using remote HSM DH\n{}", remoteSignedJws);
 
-    log.info("Client signed JWS header:\n{}",
-        StaticResources.SERVICE_EXCHANGE_OBJECT_MAPPER.writerWithDefaultPrettyPrinter()
+    log.info(
+        "Client signed JWS header:\n{}",
+        StaticResources.SERVICE_EXCHANGE_OBJECT_MAPPER
+            .writerWithDefaultPrettyPrinter()
             .writeValueAsString(jwsObject.getHeader().toJSONObject()));
-    log.info("Client signed JWS payload:\n{}",
-        StaticResources.SERVICE_EXCHANGE_OBJECT_MAPPER.writerWithDefaultPrettyPrinter()
+    log.info(
+        "Client signed JWS payload:\n{}",
+        StaticResources.SERVICE_EXCHANGE_OBJECT_MAPPER
+            .writerWithDefaultPrettyPrinter()
             .writeValueAsString(jwsObject.getPayload().toJSONObject()));
 
     // Verify Signature
-    JWSVerifier verifier = new HSECPkdsVerifier(algorithm,
-        new PrivateKeyPKDSKeyDerivation((ECPrivateKey) TestCredentials.serverKeyPair.getPrivate()));
+    JWSVerifier verifier =
+        new HSECPkdsVerifier(
+            algorithm,
+            new PrivateKeyPKDSKeyDerivation(
+                (ECPrivateKey) TestCredentials.serverKeyPair.getPrivate()));
     assertTrue(jwsObject.verify(verifier));
     log.info("Server verification of client signed JWS succeeded");
   }
 
-  void hsPkdsServerSign(HSPKDSAlgorithm algorithm, PKDSHeaderParam pkdsHeaderParam,
-      ListKeysResponsePayload.KeyInfo keyInfo, String context, String sessionId) throws Exception {
-    JWSSigner signer = new HSECPkdsSigner(algorithm,
-        new PrivateKeyPKDSKeyDerivation((ECPrivateKey) TestCredentials.serverKeyPair.getPrivate()));
+  void hsPkdsServerSign(
+      HSPKDSAlgorithm algorithm,
+      PKDSHeaderParam pkdsHeaderParam,
+      ListKeysResponsePayload.KeyInfo keyInfo,
+      String context,
+      String sessionId)
+      throws Exception {
+    JWSSigner signer =
+        new HSECPkdsSigner(
+            algorithm,
+            new PrivateKeyPKDSKeyDerivation(
+                (ECPrivateKey) TestCredentials.serverKeyPair.getPrivate()));
     log.info("Server signing JWS with HS-PKDS");
 
     // create signature
-    String message = StaticResources.OBJECT_MAPPER.writeValueAsString(TestMessage.builder()
-        .message("This message will be signed")
-        .build());
-    JWSHeader header = new JWSHeader.Builder(algorithm.getAlg())
-        .type(JOSEObjectType.JOSE)
-        .customParam(HSECPkdsSigner.PKDS_HEADER_PARAM, pkdsHeaderParam.toJsonObject())
-        .build();
+    String message =
+        StaticResources.OBJECT_MAPPER.writeValueAsString(
+            TestMessage.builder().message("This message will be signed").build());
+    JWSHeader header =
+        new JWSHeader.Builder(algorithm.getAlg())
+            .type(JOSEObjectType.JOSE)
+            .customParam(HSECPkdsSigner.PKDS_HEADER_PARAM, pkdsHeaderParam.toJsonObject())
+            .build();
     JWSObject jwsObject = new JWSObject(header, new Payload(message));
     jwsObject.sign(signer);
     final String remoteSignedJws = jwsObject.serialize();
     log.info("Server signed JWS\n{}", remoteSignedJws);
 
-    log.info("Server signed JWS header:\n{}",
-        StaticResources.SERVICE_EXCHANGE_OBJECT_MAPPER.writerWithDefaultPrettyPrinter()
+    log.info(
+        "Server signed JWS header:\n{}",
+        StaticResources.SERVICE_EXCHANGE_OBJECT_MAPPER
+            .writerWithDefaultPrettyPrinter()
             .writeValueAsString(jwsObject.getHeader().toJSONObject()));
-    log.info("Server signed JWS payload:\n{}",
-        StaticResources.SERVICE_EXCHANGE_OBJECT_MAPPER.writerWithDefaultPrettyPrinter()
+    log.info(
+        "Server signed JWS payload:\n{}",
+        StaticResources.SERVICE_EXCHANGE_OBJECT_MAPPER
+            .writerWithDefaultPrettyPrinter()
             .writeValueAsString(jwsObject.getPayload().toJSONObject()));
 
     // Verify Signature
-    JWSVerifier verifier = new HSECPkdsVerifier(algorithm,
-        new RemoteHsmPKDSKeyDerivation(clientApi, context, keyInfo.getKid(), sessionId));
-    //JWSVerifier verifier = new RemoteHSECPkdsVerifier(algorithm, clientApi, context, keyInfo.getKid(), sessionId);
+    JWSVerifier verifier =
+        new HSECPkdsVerifier(
+            algorithm,
+            new RemoteHsmPKDSKeyDerivation(clientApi, context, keyInfo.getKid(), sessionId));
+    // JWSVerifier verifier = new RemoteHSECPkdsVerifier(algorithm, clientApi, context,
+    // keyInfo.getKid(), sessionId);
     assertTrue(jwsObject.verify(verifier));
     log.info("Server signature verified with client verifier using remote HSM DH");
   }
-
 }

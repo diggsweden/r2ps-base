@@ -2,6 +2,8 @@ package se.digg.wallet.r2ps.client.jws.pkds.impl;
 
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.util.Base64URL;
+import java.security.interfaces.ECPublicKey;
+import java.util.Optional;
 import lombok.NoArgsConstructor;
 import org.bouncycastle.crypto.Digest;
 import org.bouncycastle.crypto.generators.HKDFBytesGenerator;
@@ -12,17 +14,14 @@ import se.digg.wallet.r2ps.client.jws.pkds.PKDSKeyDerivation;
 import se.digg.wallet.r2ps.client.jws.pkds.PKDSParams;
 import se.digg.wallet.r2ps.client.jws.pkds.PKDSSuite;
 
-import java.security.interfaces.ECPublicKey;
-import java.util.Optional;
-
 @NoArgsConstructor
 public abstract class AbstractEcdhHkdfKeyDerivation implements PKDSKeyDerivation {
 
   public static final String DEFAULT_HKDF_INFO = "HS256-PKDS-v1";
 
   @Override
-  public byte[] deriveKey(PKDSHeaderParam pkdsHeaderParam, ECPublicKey publicKey,
-      int minimumKeyByteLen)
+  public byte[] deriveKey(
+      PKDSHeaderParam pkdsHeaderParam, ECPublicKey publicKey, int minimumKeyByteLen)
       throws JOSEException {
     // Extract pkds parameters
     final PKDSParams pkdsParams =
@@ -48,5 +47,4 @@ public abstract class AbstractEcdhHkdfKeyDerivation implements PKDSKeyDerivation
   }
 
   protected abstract byte[] diffieHellman(ECPublicKey publicKey) throws JOSEException;
-
 }

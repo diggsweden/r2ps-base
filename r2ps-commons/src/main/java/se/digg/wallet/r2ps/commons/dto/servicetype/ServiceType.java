@@ -2,10 +2,7 @@ package se.digg.wallet.r2ps.commons.dto.servicetype;
 
 import se.digg.wallet.r2ps.commons.dto.EncryptOption;
 
-public record ServiceType(
-    String id,
-    EncryptOption encryptKey
-) {
+public record ServiceType(String id, EncryptOption encryptKey) {
   public static final String AUTHENTICATE = "authenticate";
   public static final String PIN_REGISTRATION = "pin_registration";
   public static final String PIN_CHANGE = "pin_change";

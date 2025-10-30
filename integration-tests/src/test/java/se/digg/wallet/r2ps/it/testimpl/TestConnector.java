@@ -3,6 +3,7 @@ package se.digg.wallet.r2ps.it.testimpl;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.JWSObject;
+import java.text.ParseException;
 import lombok.extern.slf4j.Slf4j;
 import se.digg.wallet.r2ps.client.api.ServiceExchangeConnector;
 import se.digg.wallet.r2ps.commons.StaticResources;
@@ -11,8 +12,6 @@ import se.digg.wallet.r2ps.commons.dto.ErrorResponse;
 import se.digg.wallet.r2ps.commons.dto.HttpResponse;
 import se.digg.wallet.r2ps.commons.exception.ServiceRequestHandlingException;
 import se.digg.wallet.r2ps.server.service.ServiceRequestHandler;
-
-import java.text.ParseException;
 
 @Slf4j
 public class TestConnector implements ServiceExchangeConnector {
@@ -46,9 +45,9 @@ public class TestConnector implements ServiceExchangeConnector {
     log.trace("Service response JWS: {}", serviceResponse);
     try {
       JWSObject jwsObject = JWSObject.parse(serviceResponse);
-      log.trace("Received Service response:\n{}", objectMapper.writeValueAsString(
-          jwsObject.getPayload().toJSONObject()
-      ));
+      log.trace(
+          "Received Service response:\n{}",
+          objectMapper.writeValueAsString(jwsObject.getPayload().toJSONObject()));
     } catch (JsonProcessingException | ParseException e) {
       throw new RuntimeException(e);
     }
@@ -58,9 +57,9 @@ public class TestConnector implements ServiceExchangeConnector {
     log.trace("Service request JWS: {}", serviceRequest);
     try {
       JWSObject jwsObject = JWSObject.parse(serviceRequest);
-      log.trace("Sending service request:\n{}", objectMapper.writeValueAsString(
-          jwsObject.getPayload().toJSONObject()
-      ));
+      log.trace(
+          "Sending service request:\n{}",
+          objectMapper.writeValueAsString(jwsObject.getPayload().toJSONObject()));
     } catch (JsonProcessingException | ParseException e) {
       throw new RuntimeException(e);
     }
@@ -68,13 +67,12 @@ public class TestConnector implements ServiceExchangeConnector {
 
   private HttpResponse getErrorResponseString(ErrorCode errorCode, String message) {
     try {
-      return new HttpResponse(objectMapper.writeValueAsString(ErrorResponse.builder()
-          .errorCode(errorCode.name())
-          .message(message)
-          .build()), errorCode.getResponseCode());
+      return new HttpResponse(
+          objectMapper.writeValueAsString(
+              ErrorResponse.builder().errorCode(errorCode.name()).message(message).build()),
+          errorCode.getResponseCode());
     } catch (JsonProcessingException e) {
       throw new RuntimeException(e);
     }
   }
-
 }

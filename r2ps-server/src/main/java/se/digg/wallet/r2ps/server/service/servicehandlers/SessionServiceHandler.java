@@ -1,5 +1,8 @@
 package se.digg.wallet.r2ps.server.service.servicehandlers;
 
+import java.io.IOException;
+import java.util.List;
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import se.digg.wallet.r2ps.commons.dto.ErrorCode;
 import se.digg.wallet.r2ps.commons.dto.ServiceRequest;
@@ -10,10 +13,6 @@ import se.digg.wallet.r2ps.commons.exception.ServiceRequestHandlingException;
 import se.digg.wallet.r2ps.commons.pake.opaque.PakeSessionRegistry;
 import se.digg.wallet.r2ps.server.pake.opaque.ServerPakeRecord;
 import se.digg.wallet.r2ps.server.service.ClientPublicKeyRecord;
-
-import java.io.IOException;
-import java.util.List;
-import java.util.Optional;
 
 @Slf4j
 public class SessionServiceHandler implements ServiceTypeHandler {
@@ -31,24 +30,35 @@ public class SessionServiceHandler implements ServiceTypeHandler {
   }
 
   @Override
-  public ExchangePayload<?> processServiceRequest(final ServiceRequest serviceRequest,
+  public ExchangePayload<?> processServiceRequest(
+      final ServiceRequest serviceRequest,
       final ServerPakeRecord pakeSession,
-      final byte[] decryptedPayload, final ClientPublicKeyRecord clientPublicKeyRecord,
-      final ServiceType serviceType) throws ServiceRequestHandlingException {
+      final byte[] decryptedPayload,
+      final ClientPublicKeyRecord clientPublicKeyRecord,
+      final ServiceType serviceType)
+      throws ServiceRequestHandlingException {
 
     try {
-      log.debug("Handling session request {} for context {}", serviceType.id(),
+      log.debug(
+          "Handling session request {} for context {}",
+          serviceType.id(),
           serviceRequest.getContext());
-      final String context = Optional.ofNullable(serviceRequest.getContext()).orElseThrow(() ->
-          new ServiceRequestHandlingException("No context in request",
-              ErrorCode.ILLEGAL_REQUEST_DATA));
-      final String clientId = Optional.ofNullable(serviceRequest.getClientID()).orElseThrow(() ->
-          new ServiceRequestHandlingException("No client ID in request",
-              ErrorCode.ILLEGAL_REQUEST_DATA));
+      final String context =
+          Optional.ofNullable(serviceRequest.getContext())
+              .orElseThrow(
+                  () ->
+                      new ServiceRequestHandlingException(
+                          "No context in request", ErrorCode.ILLEGAL_REQUEST_DATA));
+      final String clientId =
+          Optional.ofNullable(serviceRequest.getClientID())
+              .orElseThrow(
+                  () ->
+                      new ServiceRequestHandlingException(
+                          "No client ID in request", ErrorCode.ILLEGAL_REQUEST_DATA));
       return switch (serviceType.id()) {
         case ServiceType.SESSION_END -> endSession(decryptedPayload);
-        case ServiceType.SESSION_CONTEXT_END ->
-            endContextSessions(clientId, serviceRequest.getKid(), context);
+        case ServiceType.SESSION_CONTEXT_END -> endContextSessions(
+            clientId, serviceRequest.getKid(), context);
         default -> throw new ServiceRequestHandlingException(
             String.format("Unsupported service type %s", serviceType.id()),
             ErrorCode.ILLEGAL_REQUEST_DATA);
@@ -66,8 +76,8 @@ public class SessionServiceHandler implements ServiceTypeHandler {
     return new StringPayload("OK");
   }
 
-  private ExchangePayload<?> endContextSessions(final String clientId, final String kid,
-      final String context) {
+  private ExchangePayload<?> endContextSessions(
+      final String clientId, final String kid, final String context) {
     final List<ServerPakeRecord> pakeSessions =
         serverPakeSessionRegistry.getPakeSessions(clientId, kid, context);
     for (ServerPakeRecord pakeSession : pakeSessions) {
@@ -75,5 +85,4 @@ public class SessionServiceHandler implements ServiceTypeHandler {
     }
     return new StringPayload("OK");
   }
-
 }

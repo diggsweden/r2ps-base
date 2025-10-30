@@ -4,8 +4,7 @@ import java.io.Serial;
 
 public class PakeSessionException extends Exception {
 
-  @Serial
-  private static final long serialVersionUID = 8081211478518234186L;
+  @Serial private static final long serialVersionUID = 8081211478518234186L;
 
   public PakeSessionException(final String message) {
     super(message);
@@ -14,5 +13,4 @@ public class PakeSessionException extends Exception {
   public PakeSessionException(final String message, final Throwable cause) {
     super(message, cause);
   }
-
 }

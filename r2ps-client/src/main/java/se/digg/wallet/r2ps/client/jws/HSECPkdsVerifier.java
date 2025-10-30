@@ -6,6 +6,13 @@ import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.JWSVerifier;
 import com.nimbusds.jose.crypto.impl.HMAC;
 import com.nimbusds.jose.util.Base64URL;
+import java.security.PublicKey;
+import java.security.interfaces.ECPublicKey;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import lombok.Setter;
 import se.digg.wallet.r2ps.client.jws.pkds.HSPKDSAlgorithm;
 import se.digg.wallet.r2ps.client.jws.pkds.HSPKDSProvider;
@@ -14,23 +21,16 @@ import se.digg.wallet.r2ps.client.jws.pkds.PKDSKeyDerivation;
 import se.digg.wallet.r2ps.client.jws.pkds.PKDSPublicKey;
 import se.digg.wallet.r2ps.client.jws.pkds.PKDSSuite;
 
-import java.security.PublicKey;
-import java.security.interfaces.ECPublicKey;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-
 public class HSECPkdsVerifier extends HSPKDSProvider
     implements JWSVerifier, CriticalHeaderParamsAware {
-  @Setter
-  Set<String> deferredCriticalHeaderParams;
+  @Setter Set<String> deferredCriticalHeaderParams;
   private final List<PKDSKeyDerivation> supportedKeyDerivations;
   protected ECPublicKey producerPublicKey;
 
-  public HSECPkdsVerifier(final HSPKDSAlgorithm alg,
-      List<PKDSKeyDerivation> supportedKeyDerivations, ECPublicKey producerPublicKey)
+  public HSECPkdsVerifier(
+      final HSPKDSAlgorithm alg,
+      List<PKDSKeyDerivation> supportedKeyDerivations,
+      ECPublicKey producerPublicKey)
       throws JOSEException {
     super(alg.getAlg());
     this.deferredCriticalHeaderParams = Set.of();
@@ -38,13 +38,17 @@ public class HSECPkdsVerifier extends HSPKDSProvider
     this.supportedKeyDerivations = supportedKeyDerivations;
   }
 
-  public HSECPkdsVerifier(final HSPKDSAlgorithm alg, PKDSKeyDerivation supportedKeyDerivation,
-      ECPublicKey producerPublicKey) throws JOSEException {
+  public HSECPkdsVerifier(
+      final HSPKDSAlgorithm alg,
+      PKDSKeyDerivation supportedKeyDerivation,
+      ECPublicKey producerPublicKey)
+      throws JOSEException {
     this(alg, List.of(supportedKeyDerivation), producerPublicKey);
   }
 
-  public HSECPkdsVerifier(final HSPKDSAlgorithm alg,
-      List<PKDSKeyDerivation> supportedKeyDerivations) throws JOSEException {
+  public HSECPkdsVerifier(
+      final HSPKDSAlgorithm alg, List<PKDSKeyDerivation> supportedKeyDerivations)
+      throws JOSEException {
     this(alg, supportedKeyDerivations, null);
   }
 
@@ -64,8 +68,8 @@ public class HSECPkdsVerifier extends HSPKDSProvider
   }
 
   @Override
-  public boolean verify(final JWSHeader header, final byte[] signingInput,
-      final Base64URL signature)
+  public boolean verify(
+      final JWSHeader header, final byte[] signingInput, final Base64URL signature)
       throws JOSEException {
     try {
       // Get PKDS Header params
@@ -80,13 +84,17 @@ public class HSECPkdsVerifier extends HSPKDSProvider
       }
 
       final PKDSSuite suite = pkdsHeaderParam.getSuite();
-      final PKDSKeyDerivation pkdsKeyDerivation = supportedKeyDerivations.stream()
-          .filter(keyDerivation -> keyDerivation.supports(suite))
-          .findFirst()
-          .orElseThrow(() -> new JOSEException("Unsupported PKDS suite: " + suite));
+      final PKDSKeyDerivation pkdsKeyDerivation =
+          supportedKeyDerivations.stream()
+              .filter(keyDerivation -> keyDerivation.supports(suite))
+              .findFirst()
+              .orElseThrow(() -> new JOSEException("Unsupported PKDS suite: " + suite));
 
-      setSecret(pkdsKeyDerivation.deriveKey(pkdsHeaderParam, producerPublicKey,
-          getMinRequiredSecretLength(header.getAlgorithm()) / 8));
+      setSecret(
+          pkdsKeyDerivation.deriveKey(
+              pkdsHeaderParam,
+              producerPublicKey,
+              getMinRequiredSecretLength(header.getAlgorithm()) / 8));
       // Check key length
       ensureSecretLengthSatisfiesAlgorithm(header.getAlgorithm());
       // Sign
@@ -100,8 +108,10 @@ public class HSECPkdsVerifier extends HSPKDSProvider
   }
 
   protected ECPublicKey getProducerKey(final PKDSHeaderParam pkdsHeaderParam) throws JOSEException {
-    final PKDSPublicKey pkdsPublicKey = Optional.ofNullable(pkdsHeaderParam.getProducerPublicKey())
-        .orElseThrow(() -> new IllegalArgumentException("Producer public key must be provided"));
+    final PKDSPublicKey pkdsPublicKey =
+        Optional.ofNullable(pkdsHeaderParam.getProducerPublicKey())
+            .orElseThrow(
+                () -> new IllegalArgumentException("Producer public key must be provided"));
     PublicKey publicKey = getPkdsPublicKey(pkdsPublicKey);
     if (publicKey == null) {
       throw new JOSEException("Failed to get producer public key");
@@ -111,7 +121,4 @@ public class HSECPkdsVerifier extends HSPKDSProvider
     }
     throw new JOSEException("Unsupported public key type");
   }
-
-
-
 }

@@ -2,20 +2,18 @@ package se.digg.wallet.r2ps.commons.dto.payload;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import se.digg.wallet.r2ps.commons.StaticResources;
-
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import se.digg.wallet.r2ps.commons.StaticResources;
 
 @AllArgsConstructor
 public class JsonPayload implements ExchangePayload<JsonPayload> {
 
-  @Getter
-  Map<String, Object> data;
+  @Getter Map<String, Object> data;
 
   public JsonPayload() {
     this.data = new HashMap<>();
@@ -58,8 +56,6 @@ public class JsonPayload implements ExchangePayload<JsonPayload> {
     }
   }
 
-
-
   @Override
   public byte[] serialize() throws JsonProcessingException {
     return StaticResources.SERVICE_EXCHANGE_OBJECT_MAPPER.writeValueAsBytes(this.data);
@@ -67,8 +63,7 @@ public class JsonPayload implements ExchangePayload<JsonPayload> {
 
   @Override
   public JsonPayload deserialize(final byte[] data) throws IOException {
-    return new JsonPayload(StaticResources.SERVICE_EXCHANGE_OBJECT_MAPPER.readValue(data,
-        new TypeReference<>() {
-        }));
+    return new JsonPayload(
+        StaticResources.SERVICE_EXCHANGE_OBJECT_MAPPER.readValue(data, new TypeReference<>() {}));
   }
 }

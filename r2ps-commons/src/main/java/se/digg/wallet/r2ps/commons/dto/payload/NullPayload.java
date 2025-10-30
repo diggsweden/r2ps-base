@@ -1,9 +1,8 @@
 package se.digg.wallet.r2ps.commons.dto.payload;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import lombok.NoArgsConstructor;
-
 import java.io.IOException;
+import lombok.NoArgsConstructor;
 
 @NoArgsConstructor
 public class NullPayload implements ExchangePayload<NullPayload> {
