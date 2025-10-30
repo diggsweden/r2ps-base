@@ -198,6 +198,5 @@ public class TestHsmServiceHandler extends HsmServiceHandler {
     }
   }
 
-  public static record HsmEcKeyPair(
-      String kid, KeyPair keyPair, String curveName, Instant creationTime) {}
+  public record HsmEcKeyPair(String kid, KeyPair keyPair, String curveName, Instant creationTime) {}
 }

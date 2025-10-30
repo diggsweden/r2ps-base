@@ -1,7 +1,6 @@
 package se.digg.wallet.r2ps.client.pake.opaque;
 
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import lombok.Getter;
 import se.digg.crypto.opaque.client.ClientKeyExchangeResult;
 import se.digg.crypto.opaque.client.ClientState;
@@ -22,15 +21,12 @@ public class ClientOpaqueProvider {
 
   private final ClientOpaqueEntity clientOpaqueEntity;
   @Getter private final PakeSessionRegistry<ClientPakeRecord> sessionRegistry;
-  private final Duration recordDuration;
 
   public ClientOpaqueProvider(
       final ClientOpaqueEntity clientOpaqueEntity,
-      final PakeSessionRegistry<ClientPakeRecord> sessionRegistry,
-      Duration recordDuration) {
+      final PakeSessionRegistry<ClientPakeRecord> sessionRegistry) {
     this.clientOpaqueEntity = clientOpaqueEntity;
     this.sessionRegistry = sessionRegistry;
-    this.recordDuration = recordDuration;
   }
 
   public RegistrationRequestResult createRegistrationRequest(byte[] pin)

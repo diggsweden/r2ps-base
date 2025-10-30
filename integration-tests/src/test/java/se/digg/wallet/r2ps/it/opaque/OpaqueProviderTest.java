@@ -115,9 +115,7 @@ class OpaqueProviderTest {
         new InMemoryPakeSessionRegistry<>();
     clientRecordRegistry = new FileBackedClientRecordRegistry(null);
 
-    clientOpaqueProvider =
-        new ClientOpaqueProvider(
-            clientOpaqueEntity, clientPakeSessionRegistry, Duration.ofMinutes(5));
+    clientOpaqueProvider = new ClientOpaqueProvider(clientOpaqueEntity, clientPakeSessionRegistry);
     serverOpaqueProvider =
         new ServerOpaqueProvider(
             serverOpaqueEntity,
@@ -174,18 +172,6 @@ class OpaqueProviderTest {
 
   @Test
   void testRawOpaque() throws Exception {
-
-    HashFunctions sha256hash =
-        new HashFunctions(
-            SHA256Digest.newInstance(), new ArgonStretch(ArgonStretch.ARGON_PROFILE_DEFAULT));
-    KeyDerivationFunctions hkdfKeyDerivation = new HKDFKeyDerivation(sha256hash);
-    OpaqueCurve p256Curve =
-        new DefaultOpaqueCurve(
-            ECNamedCurveTable.getParameterSpec("P-256"),
-            HashToCurveProfile.P256_XMD_SHA_256_SSWU_RO_,
-            new DstContext(DstContext.IDENTIFIER_P256_SHA256));
-    OprfFunctions oprfP256 = new DefaultOprfFunction(p256Curve, sha256hash, "OPAQUE-POC");
-
     byte[] serverPublicKey =
         ECUtils.serializePublicKey(TestCredentials.serverOprfKeyPair.getPublic());
     OprfPrivateKey serverPrivateKey = new OprfPrivateKey(TestCredentials.serverOprfKeyPair);

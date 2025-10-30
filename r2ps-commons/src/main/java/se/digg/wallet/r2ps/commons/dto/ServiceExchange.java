@@ -54,6 +54,5 @@ public abstract class ServiceExchange {
       validate();
       return this.serviceExchange;
     }
-    ;
   }
 }

@@ -42,19 +42,16 @@ public class OpaqueServiceHandler implements ServiceTypeHandler {
   protected final List<String> supportedContexts;
   private final ServerOpaqueProvider opaqueProvider;
   private final PinAuthorization pinAuthorization;
-  private final SessionTaskRegistry sessionTaskRegistry;
 
   @Setter private Duration pinChangeMaxSessionAge = Duration.ofSeconds(30);
 
   public OpaqueServiceHandler(
       final List<String> supportedContexts,
       final PinAuthorization pinAuthorization,
-      final ServerOpaqueProvider opaqueProvider,
-      final SessionTaskRegistry sessionTaskRegistry) {
+      final ServerOpaqueProvider opaqueProvider) {
     this.supportedContexts = supportedContexts;
     this.opaqueProvider = opaqueProvider;
     this.pinAuthorization = pinAuthorization;
-    this.sessionTaskRegistry = sessionTaskRegistry;
   }
 
   public OpaqueServiceHandler(
@@ -71,7 +68,6 @@ public class OpaqueServiceHandler implements ServiceTypeHandler {
       Duration finalizeDuration) {
     this.pinAuthorization = pinAuthorization;
     this.supportedContexts = supportedContexts;
-    this.sessionTaskRegistry = sessionTaskRegistry;
     ServerOpaqueEntity serverOpaqueEntity =
         ServerOpaqueEntity.builder()
             .opaqueServer(opaqueConfiguration.getOpaqueServer())
@@ -107,7 +103,7 @@ public class OpaqueServiceHandler implements ServiceTypeHandler {
       throws ServiceRequestHandlingException {
     switch (serviceType.id()) {
       case ServiceType.AUTHENTICATE -> {
-        return processOpaqueAuthentication(serviceType, serviceRequest, decryptedPayload);
+        return processOpaqueAuthentication(serviceRequest, decryptedPayload);
       }
       case ServiceType.PIN_CHANGE, ServiceType.PIN_REGISTRATION -> {
         return processOpaquePinRegistration(
@@ -146,13 +142,10 @@ public class OpaqueServiceHandler implements ServiceTypeHandler {
               "Provided authorization code is invalid", ErrorCode.ACCESS_DENIED);
         }
       }
-      if (serviceType.id().equals(ServiceType.PIN_CHANGE)) {
-        // On PIN change, the session must be created just before PIN change to validate the old PIN
-        // before change.
-        if (Instant.now().isAfter(pakeSession.getCreationTime().plus(pinChangeMaxSessionAge))) {
-          throw new ServiceRequestHandlingException(
-              "Session is too old for a PIN change request", ErrorCode.ACCESS_DENIED);
-        }
+      if (serviceType.id().equals(ServiceType.PIN_CHANGE)
+          && Instant.now().isAfter(pakeSession.getCreationTime().plus(pinChangeMaxSessionAge))) {
+        throw new ServiceRequestHandlingException(
+            "Session is too old for a PIN change request", ErrorCode.ACCESS_DENIED);
       }
 
       final PakeState state = pakeRequestPayload.getState();
@@ -192,8 +185,6 @@ public class OpaqueServiceHandler implements ServiceTypeHandler {
    * (Password Authenticated Key Exchange) request (EVALUATE or FINALIZE), this method evaluates or
    * finalizes the authentication process and creates an appropriate response payload.
    *
-   * @param serviceType the type of the service being requested, used to verify compatibility with
-   *     the OPAQUE authentication process
    * @param serviceRequest the request object containing client information, key identifiers, and
    *     other contextual data needed to process the PAKE request
    * @param decryptedPayload the decrypted payload of the request, expected to contain PAKE-specific
@@ -205,9 +196,7 @@ public class OpaqueServiceHandler implements ServiceTypeHandler {
    *     protocol-specific exceptions
    */
   private ExchangePayload<?> processOpaqueAuthentication(
-      final ServiceType serviceType,
-      final ServiceRequest serviceRequest,
-      final byte[] decryptedPayload)
+      final ServiceRequest serviceRequest, final byte[] decryptedPayload)
       throws ServiceRequestHandlingException {
 
     try {

@@ -34,7 +34,6 @@ import se.digg.crypto.opaque.crypto.impl.DefaultOpaqueCurve;
 import se.digg.crypto.opaque.crypto.impl.DefaultOprfFunction;
 import se.digg.crypto.opaque.crypto.impl.HKDFKeyDerivation;
 import se.digg.crypto.opaque.dto.KE1;
-import se.digg.crypto.opaque.server.keys.KeyPairRecord;
 import se.digg.wallet.r2ps.commons.dto.JWEEncryptionParams;
 import se.digg.wallet.r2ps.commons.dto.JWSSigningParams;
 import se.digg.wallet.r2ps.commons.dto.PakeState;
@@ -83,11 +82,6 @@ class ExchangePayloadTest {
 
     OpaqueClient client = new DefaultOpaqueClient(oprfP256, hkdfKeyDerivation, sha256hash);
 
-    byte[] oprfSeed = OpaqueUtils.random(32);
-    KeyPairRecord serverKeyPair =
-        new KeyPairRecord(
-            ECUtils.serializePublicKey(TestCredentials.serverKeyPair.getPublic()),
-            TestCredentials.serverKeyPair.getPrivate().getEncoded());
     JWSSigningParams signingParams =
         new JWSSigningParams(
             new ECDSASigner((ECPrivateKey) TestCredentials.p256keyPair.getPrivate()),
@@ -166,7 +160,7 @@ class ExchangePayloadTest {
     log.info("ESDH Encrypted Service data:\n{}", serviceData);
     final byte[] decrypted = Utils.decryptJWE_ECDH(serviceDataBytes, decryptionStaticKey);
     final String serviceDataString = new String(decrypted, StandardCharsets.UTF_8);
-    log.info("Decrypted Service data:\n{}", prettyPrint(new String(serviceDataString)));
+    log.info("Decrypted Service data:\n{}", prettyPrint(serviceDataString));
   }
 
   private String prettyPrint(final String jsonString) throws Exception {

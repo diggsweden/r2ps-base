@@ -15,7 +15,7 @@ public enum HSPKDSAlgorithm {
   private final JWSAlgorithm alg;
 
   public static HSPKDSAlgorithm fromJWSAlgorithm(final JWSAlgorithm alg) {
-    return Arrays.stream(HSPKDSAlgorithm.values())
+    return Arrays.stream(values())
         .filter(hspkdsAlgorithm -> hspkdsAlgorithm.alg.equals(alg))
         .findFirst()
         .orElseThrow(() -> new IllegalArgumentException("Unsupported JWS algorithm: " + alg));

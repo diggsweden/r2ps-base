@@ -82,10 +82,7 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
     ClientOpaqueEntity clientOpaqueEntity =
         new ClientOpaqueEntity(configuration.getClientIdentity(), opaqueClient);
     this.opaqueProvider =
-        new ClientOpaqueProvider(
-            clientOpaqueEntity,
-            configuration.getClientPakeSessionRegistry(),
-            configuration.getSessionDuration());
+        new ClientOpaqueProvider(clientOpaqueEntity, configuration.getClientPakeSessionRegistry());
     this.connector = configuration.getServiceExchangeConnector();
     this.serviceTypeRegistry = configuration.getServiceTypeRegistry();
     this.serviceExchangeFactory = new ServiceExchangeFactory();
