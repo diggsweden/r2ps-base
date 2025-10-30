@@ -77,9 +77,10 @@ public abstract class HsmServiceHandler implements ServiceTypeHandler {
       case ServiceType.HSM_KEYGEN -> processKeyGenRequest(decryptedPayload, clientId);
       case ServiceType.HSM_LIST_KEYS -> processListKeyRequest(decryptedPayload, clientId);
       case ServiceType.HSM_DELETE_KEY -> processKeyDeleteRequest(decryptedPayload, clientId);
-      default -> throw new ServiceRequestHandlingException(
-          String.format("Unsupported Service type ID %s", serviceType.id()),
-          ErrorCode.ILLEGAL_REQUEST_DATA);
+      default ->
+          throw new ServiceRequestHandlingException(
+              String.format("Unsupported Service type ID %s", serviceType.id()),
+              ErrorCode.ILLEGAL_REQUEST_DATA);
     };
   }
 

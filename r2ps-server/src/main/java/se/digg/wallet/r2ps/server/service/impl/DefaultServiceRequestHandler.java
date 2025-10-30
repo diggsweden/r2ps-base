@@ -87,9 +87,10 @@ public class DefaultServiceRequestHandler implements ServiceRequestHandler {
     return switch (clientPublicKey.getAlgorithm()) {
       case "EC" -> new ECDSAVerifier((ECPublicKey) clientPublicKey);
       case "RSA" -> new RSASSAVerifier((RSAPublicKey) clientPublicKey);
-      default -> throw new ServiceRequestHandlingException(
-          "Unsupported public key algorithm: " + clientPublicKey.getAlgorithm(),
-          ErrorCode.ILLEGAL_REQUEST_DATA);
+      default ->
+          throw new ServiceRequestHandlingException(
+              "Unsupported public key algorithm: " + clientPublicKey.getAlgorithm(),
+              ErrorCode.ILLEGAL_REQUEST_DATA);
     };
   }
 

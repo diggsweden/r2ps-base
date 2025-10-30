@@ -57,11 +57,12 @@ public class SessionServiceHandler implements ServiceTypeHandler {
                           "No client ID in request", ErrorCode.ILLEGAL_REQUEST_DATA));
       return switch (serviceType.id()) {
         case ServiceType.SESSION_END -> endSession(decryptedPayload);
-        case ServiceType.SESSION_CONTEXT_END -> endContextSessions(
-            clientId, serviceRequest.getKid(), context);
-        default -> throw new ServiceRequestHandlingException(
-            String.format("Unsupported service type %s", serviceType.id()),
-            ErrorCode.ILLEGAL_REQUEST_DATA);
+        case ServiceType.SESSION_CONTEXT_END ->
+            endContextSessions(clientId, serviceRequest.getKid(), context);
+        default ->
+            throw new ServiceRequestHandlingException(
+                String.format("Unsupported service type %s", serviceType.id()),
+                ErrorCode.ILLEGAL_REQUEST_DATA);
       };
     } catch (NullPointerException | IOException e) {
       throw new ServiceRequestHandlingException(

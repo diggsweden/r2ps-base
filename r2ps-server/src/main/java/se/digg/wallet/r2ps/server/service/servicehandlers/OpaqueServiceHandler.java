@@ -109,8 +109,9 @@ public class OpaqueServiceHandler implements ServiceTypeHandler {
         return processOpaquePinRegistration(
             serviceRequest, pakeSession, decryptedPayload, clientPublicKeyRecord, serviceType);
       }
-      default -> throw new ServiceRequestHandlingException(
-          "Unsupported service type: " + serviceType.id(), ErrorCode.ILLEGAL_REQUEST_DATA);
+      default ->
+          throw new ServiceRequestHandlingException(
+              "Unsupported service type: " + serviceType.id(), ErrorCode.ILLEGAL_REQUEST_DATA);
     }
   }
 
