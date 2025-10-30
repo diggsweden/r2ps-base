@@ -34,16 +34,16 @@ import se.digg.crypto.opaque.crypto.impl.DefaultOpaqueCurve;
 import se.digg.crypto.opaque.crypto.impl.DefaultOprfFunction;
 import se.digg.crypto.opaque.crypto.impl.HKDFKeyDerivation;
 import se.digg.crypto.opaque.dto.KE1;
-import se.digg.wallet.r2ps.commons.dto.JWEEncryptionParams;
 import se.digg.wallet.r2ps.commons.dto.JWSSigningParams;
 import se.digg.wallet.r2ps.commons.dto.PakeState;
 import se.digg.wallet.r2ps.commons.dto.ServiceRequest;
 import se.digg.wallet.r2ps.commons.dto.ServiceResponse;
 import se.digg.wallet.r2ps.commons.dto.servicetype.ServiceType;
 import se.digg.wallet.r2ps.commons.dto.servicetype.ServiceTypeRegistry;
+import se.digg.wallet.r2ps.commons.jwe.AsymmetricJweDecryptor;
+import se.digg.wallet.r2ps.commons.jwe.AsymmetricJweEncryptor;
 import se.digg.wallet.r2ps.commons.pake.ECUtils;
 import se.digg.wallet.r2ps.commons.utils.ServiceExchangeBuilder;
-import se.digg.wallet.r2ps.commons.utils.Utils;
 import se.digg.wallet.r2ps.test.data.TestCredentials;
 
 @Slf4j
@@ -107,8 +107,8 @@ class ExchangePayloadTest {
             .requestData(ke1.getEncoded())
             .build();
 
-    JWEEncryptionParams encryptionParams =
-        new JWEEncryptionParams(
+    AsymmetricJweEncryptor jweEncryptor =
+        new AsymmetricJweEncryptor(
             (ECPublicKey) TestCredentials.serverKeyPair.getPublic(), EncryptionMethod.A128GCM);
 
     final String serviceExchangeObject =
@@ -117,7 +117,7 @@ class ExchangePayloadTest {
             request,
             payload,
             signingParams,
-            encryptionParams);
+            jweEncryptor);
     assertNotNull(serviceExchangeObject);
     logExchange(serviceExchangeObject, (ECPrivateKey) TestCredentials.serverKeyPair.getPrivate());
 
@@ -129,8 +129,8 @@ class ExchangePayloadTest {
             .responseData("Ke2-response bytes".getBytes())
             .build();
 
-    JWEEncryptionParams serverEncryptionParams =
-        new JWEEncryptionParams(
+    AsymmetricJweEncryptor serverJweEncryptor =
+        new AsymmetricJweEncryptor(
             (ECPublicKey) TestCredentials.p256keyPair.getPublic(), EncryptionMethod.A128GCM);
 
     final String serviceResponseExchange =
@@ -139,13 +139,16 @@ class ExchangePayloadTest {
             serviceResponse,
             pakeResponsePayload,
             signingParams,
-            serverEncryptionParams);
+            serverJweEncryptor);
     assertNotNull(serviceResponseExchange);
     logExchange(serviceResponseExchange, (ECPrivateKey) TestCredentials.p256keyPair.getPrivate());
   }
 
   void logExchange(String serviceExchangeObject, ECPrivateKey decryptionStaticKey)
       throws Exception {
+
+    AsymmetricJweDecryptor jweDecryptor = new AsymmetricJweDecryptor(decryptionStaticKey);
+
     log.info("Service exchange object for OPAQUE exchange:\n{}", serviceExchangeObject);
     final Map<String, Object> signedPayload =
         JWSObject.parse(serviceExchangeObject).getPayload().toJSONObject();
@@ -156,7 +159,7 @@ class ExchangePayloadTest {
     final Object serviceData = signedPayload.get("data");
     final byte[] serviceDataBytes = Base64.decode(serviceData.toString());
     log.info("ESDH Encrypted Service data:\n{}", serviceData);
-    final byte[] decrypted = Utils.decryptJWEECDH(serviceDataBytes, decryptionStaticKey);
+    final byte[] decrypted = jweDecryptor.decrypt(serviceDataBytes);
     final String serviceDataString = new String(decrypted, StandardCharsets.UTF_8);
     log.info("Decrypted Service data:\n{}", prettyPrint(serviceDataString));
   }

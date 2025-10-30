@@ -7,12 +7,10 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.nimbusds.jose.EncryptionMethod;
 import com.nimbusds.jose.JOSEException;
 import java.io.IOException;
-import java.security.interfaces.ECPrivateKey;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import javax.crypto.spec.SecretKeySpec;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.bouncycastle.util.encoders.Hex;
@@ -30,6 +28,7 @@ import se.digg.wallet.r2ps.client.api.ClientContextConfiguration;
 import se.digg.wallet.r2ps.client.api.R2PSClientApi;
 import se.digg.wallet.r2ps.client.api.ServiceExchangeConnector;
 import se.digg.wallet.r2ps.client.api.ServiceResult;
+import se.digg.wallet.r2ps.client.jwe.JweCodecFactory;
 import se.digg.wallet.r2ps.client.pake.PinHardening;
 import se.digg.wallet.r2ps.client.pake.impl.ECPrivateKeyDHPinHardening;
 import se.digg.wallet.r2ps.client.pake.opaque.ClientOpaqueEntity;
@@ -37,7 +36,6 @@ import se.digg.wallet.r2ps.client.pake.opaque.ClientOpaqueProvider;
 import se.digg.wallet.r2ps.client.pake.opaque.ClientPakeRecord;
 import se.digg.wallet.r2ps.commons.StaticResources;
 import se.digg.wallet.r2ps.commons.dto.EncryptOption;
-import se.digg.wallet.r2ps.commons.dto.JWEEncryptionParams;
 import se.digg.wallet.r2ps.commons.dto.PakeProtocol;
 import se.digg.wallet.r2ps.commons.dto.ServiceRequest;
 import se.digg.wallet.r2ps.commons.dto.ServiceResponse;
@@ -52,6 +50,7 @@ import se.digg.wallet.r2ps.commons.exception.PakeAuthenticationException;
 import se.digg.wallet.r2ps.commons.exception.PakeSessionException;
 import se.digg.wallet.r2ps.commons.exception.ServiceRequestException;
 import se.digg.wallet.r2ps.commons.exception.ServiceResponseException;
+import se.digg.wallet.r2ps.commons.jwe.JweCodec;
 import se.digg.wallet.r2ps.commons.utils.ServiceExchangeBuilder;
 
 @Slf4j
@@ -61,13 +60,13 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
   private final ClientOpaqueProvider opaqueProvider;
   private final ServiceExchangeConnector connector;
   private final ServiceTypeRegistry serviceTypeRegistry;
+  private final JweCodecFactory jweCodecFactory;
 
   /** A map keyed by context, holding info about that context */
   private final Map<String, ClientContextConfiguration> contextInfoMap;
 
   private final PinHardening pinHardening;
 
-  @Setter private int encryptKeyLengthBytes = 32;
   @Setter private EncryptionMethod encryptionMethod = EncryptionMethod.A256GCM;
 
   public OpaqueR2PSClientApi(OpaqueR2PSConfiguration configuration) {
@@ -83,6 +82,7 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
     this.pinHardening =
         new ECPrivateKeyDHPinHardening(
             configuration.getOpaqueConfiguration().getHashToCurveProfile());
+    this.jweCodecFactory = new JweCodecFactory(encryptionMethod);
   }
 
   @Override
@@ -102,10 +102,8 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
         throw new PakeSessionException(String.format("The context %s is not available", context));
       }
       final ClientContextConfiguration clientContextConfiguration = contextInfoMap.get(context);
-      JWEEncryptionParams encryptionParams =
-          getESDHEncryptionParams(clientContextConfiguration, true);
-      JWEEncryptionParams decryptionParams =
-          getESDHEncryptionParams(clientContextConfiguration, false);
+      JweCodec jweCodec = jweCodecFactory.forDeviceAuthentication(clientContextConfiguration);
+
       final byte[] hPin = hardenPin(pin, clientContextConfiguration);
       ClientState clientState = new ClientState();
       String nonce = Hex.toHexString(OpaqueUtils.random(32));
@@ -130,11 +128,11 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
               pakeRequestWrapper,
               pakeEvaluatePayload,
               clientContextConfiguration.getSigningParams(),
-              encryptionParams);
+              jweCodec.jweEncryptor());
       final ServiceResult evaluateResult =
           ServiceResponseParser.parse(
               connector.requestService(pakeEvaluateRequest),
-              decryptionParams,
+              jweCodec.jweDecryptor(),
               clientContextConfiguration,
               ServiceType.AUTHENTICATE,
               serviceTypeRegistry);
@@ -180,11 +178,11 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
               pakeRequestWrapper,
               pakeFinalizePayload,
               clientContextConfiguration.getSigningParams(),
-              encryptionParams);
+              jweCodec.jweEncryptor());
       final ServiceResult finalizeResult =
           ServiceResponseParser.parse(
               connector.requestService(pakeFinalizeRequest),
-              decryptionParams,
+              jweCodec.jweDecryptor(),
               clientContextConfiguration,
               ServiceType.AUTHENTICATE,
               serviceTypeRegistry);
@@ -366,31 +364,27 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
             .serviceType(serviceTypeId)
             .nonce(nonce)
             .build();
-    JWEEncryptionParams encryptionParams;
-    JWEEncryptionParams decryptionParams;
+
+    JweCodec jweCodec;
     if (initialRegistration) {
-      encryptionParams = getESDHEncryptionParams(clientContextConfiguration, true);
-      decryptionParams = getESDHEncryptionParams(clientContextConfiguration, false);
+      jweCodec = jweCodecFactory.forDeviceAuthentication(clientContextConfiguration);
     } else {
-      encryptionParams =
-          new JWEEncryptionParams(
-              new SecretKeySpec(
-                  opaqueProvider.getSessionRegistry().getPakeSession(pakeSessionId).getSessionKey(),
-                  "AES"),
-              encryptionMethod);
-      decryptionParams = encryptionParams;
+      jweCodec =
+          jweCodecFactory.forUserAuthentication(
+              opaqueProvider.getSessionRegistry().getPakeSession(pakeSessionId));
     }
+
     final String registrationEvaluateRequest =
         ServiceExchangeBuilder.build(
             serviceTypeRegistry.getServiceType(serviceTypeId),
             pakeRequestWrapper,
             registrationEvaluatePayload,
             clientContextConfiguration.getSigningParams(),
-            encryptionParams);
+            jweCodec.jweEncryptor());
     final ServiceResult registrationEvaluateResult =
         ServiceResponseParser.parse(
             connector.requestService(registrationEvaluateRequest),
-            decryptionParams,
+            jweCodec.jweDecryptor(),
             clientContextConfiguration,
             serviceTypeId,
             serviceTypeRegistry);
@@ -427,11 +421,11 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
             pakeRequestWrapper,
             registrationFinalizePayload,
             clientContextConfiguration.getSigningParams(),
-            encryptionParams);
+            jweCodec.jweEncryptor());
     final ServiceResult registrationFinalizeResult =
         ServiceResponseParser.parse(
             connector.requestService(registrationFinalizeRequest),
-            decryptionParams,
+            jweCodec.jweDecryptor(),
             clientContextConfiguration,
             serviceTypeId,
             serviceTypeRegistry);
@@ -504,8 +498,8 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
       final ClientContextConfiguration clientContextConfiguration = contextInfoMap.get(context);
       final EncryptOption encryptOption = serviceType.encryptKey();
       String pakeSessionId = null;
-      JWEEncryptionParams encryptionParams = null;
-      JWEEncryptionParams decryptionParams = null;
+
+      JweCodec jweCodec = null;
       if (encryptOption.equals(EncryptOption.user)) {
         final ClientPakeRecord pakeSession =
             opaqueProvider.getSessionRegistry().getPakeSession(sessionId);
@@ -515,19 +509,12 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
                   "Failed to request service for context %s. No active session", context));
         }
         pakeSessionId = pakeSession.getPakeSessionId();
-        if (pakeSession.getSessionKey() == null) {
-          throw new PakeSessionException(
-              String.format("No session key available for context %s", context));
-        }
-        encryptionParams =
-            new JWEEncryptionParams(
-                new SecretKeySpec(pakeSession.getSessionKey(), "AES"), encryptionMethod);
-        decryptionParams = encryptionParams;
+
+        jweCodec = jweCodecFactory.forUserAuthentication(pakeSession);
+      } else { // EncryptOption.device
+        jweCodec = jweCodecFactory.forDeviceAuthentication(clientContextConfiguration);
       }
-      if (encryptOption.equals(EncryptOption.device)) {
-        encryptionParams = getESDHEncryptionParams(clientContextConfiguration, true);
-        decryptionParams = getESDHEncryptionParams(clientContextConfiguration, false);
-      }
+
       String nonce = Hex.toHexString(OpaqueUtils.random(32));
       ServiceRequest serviceRequest =
           ServiceRequest.builder()
@@ -545,11 +532,11 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
               serviceRequest,
               payload,
               clientContextConfiguration.getSigningParams(),
-              encryptionParams);
+              jweCodec.jweEncryptor());
       final ServiceResult serviceResult =
           ServiceResponseParser.parse(
               connector.requestService(serviceExchange),
-              decryptionParams,
+              jweCodec.jweDecryptor(),
               clientContextConfiguration,
               serviceType.id(),
               serviceTypeRegistry);
@@ -563,18 +550,6 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
     } catch (JsonProcessingException | JOSEException e) {
       throw new PakeAuthenticationException("Failed to generate service request");
     }
-  }
-
-  private JWEEncryptionParams getESDHEncryptionParams(
-      final ClientContextConfiguration clientContextConfiguration, boolean encryptOption)
-      throws PakeSessionException {
-    if (encryptOption) {
-      return new JWEEncryptionParams(
-          clientContextConfiguration.getServerPublicKey(), encryptionMethod);
-    }
-    return new JWEEncryptionParams(
-        (ECPrivateKey) clientContextConfiguration.getContextKeyPair().getPrivate(),
-        encryptionMethod);
   }
 
   private void verifyServiceResult(

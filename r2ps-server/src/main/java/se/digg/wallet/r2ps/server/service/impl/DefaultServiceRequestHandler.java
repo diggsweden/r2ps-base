@@ -22,7 +22,6 @@ import lombok.extern.slf4j.Slf4j;
 import se.digg.wallet.r2ps.commons.StaticResources;
 import se.digg.wallet.r2ps.commons.dto.EncryptOption;
 import se.digg.wallet.r2ps.commons.dto.ErrorCode;
-import se.digg.wallet.r2ps.commons.dto.JWEEncryptionParams;
 import se.digg.wallet.r2ps.commons.dto.JWSSigningParams;
 import se.digg.wallet.r2ps.commons.dto.ServiceRequest;
 import se.digg.wallet.r2ps.commons.dto.ServiceResponse;
@@ -30,6 +29,11 @@ import se.digg.wallet.r2ps.commons.dto.payload.ExchangePayload;
 import se.digg.wallet.r2ps.commons.dto.servicetype.ServiceType;
 import se.digg.wallet.r2ps.commons.dto.servicetype.ServiceTypeRegistry;
 import se.digg.wallet.r2ps.commons.exception.ServiceRequestHandlingException;
+import se.digg.wallet.r2ps.commons.jwe.AsymmetricJweDecryptor;
+import se.digg.wallet.r2ps.commons.jwe.AsymmetricJweEncryptor;
+import se.digg.wallet.r2ps.commons.jwe.JweDecryptor;
+import se.digg.wallet.r2ps.commons.jwe.JweEncryptor;
+import se.digg.wallet.r2ps.commons.jwe.SymmetricJweCipher;
 import se.digg.wallet.r2ps.commons.pake.opaque.PakeSessionRegistry;
 import se.digg.wallet.r2ps.commons.utils.ServiceExchangeBuilder;
 import se.digg.wallet.r2ps.commons.utils.Utils;
@@ -153,20 +157,20 @@ public class DefaultServiceRequestHandler implements ServiceRequestHandler {
             "No service data in request", ErrorCode.ILLEGAL_REQUEST_DATA);
       }
 
-      JWEEncryptionParams encryptionParams = null;
-      JWEEncryptionParams decryptionParams = null;
+      JweEncryptor jweEncryptor = null;
       byte[] decryptedPayload = serviceRequest.getServiceData();
+
       if (EncryptOption.user == serviceType.encryptKey()) {
-        encryptionParams = createEncryptionParams(pakeSession);
-        decryptionParams = encryptionParams;
-        decryptedPayload = Utils.decryptJWE(serviceRequest.getServiceData(), decryptionParams);
+        SymmetricJweCipher symmetricJweCipher = createEncryptionParams(pakeSession);
+        jweEncryptor = symmetricJweCipher;
+        decryptedPayload = symmetricJweCipher.decrypt(serviceRequest.getServiceData());
       }
       if (EncryptOption.device == serviceType.encryptKey()) {
-        encryptionParams = createESDHEncryptionParams(clientPublicKeyRecord, true);
-        decryptionParams = createESDHEncryptionParams(clientPublicKeyRecord, false);
-        decryptedPayload =
-            Utils.decryptJWEECDH(
-                serviceRequest.getServiceData(), decryptionParams.staticPrivateRecipientKey());
+        jweEncryptor =
+            new AsymmetricJweEncryptor(
+                (ECPublicKey) clientPublicKeyRecord.getPublicKey(), encryptionMethod);
+        JweDecryptor jweDecryptor = new AsymmetricJweDecryptor(esdhStaticPrivateKey);
+        decryptedPayload = jweDecryptor.decrypt(serviceRequest.getServiceData());
       }
       log.debug(
           "Processing service data with encryption = {}:\n{}",
@@ -180,7 +184,7 @@ public class DefaultServiceRequestHandler implements ServiceRequestHandler {
                 .writeValueAsString(serviceRequest));
         log.debug(
             "Service data in service request{}:\n{}",
-            encryptionParams == null ? "" : " after decryption",
+            jweEncryptor == null ? "" : " after decryption",
             Utils.prettyPrintByteArray(decryptedPayload));
       }
       // Process request
@@ -203,24 +207,15 @@ public class DefaultServiceRequestHandler implements ServiceRequestHandler {
       // Create the service response
       ServiceResponse response = ServiceResponse.builder().nonce(serviceRequest.getNonce()).build();
       return ServiceExchangeBuilder.build(
-          serviceType, response, responsePayload, serverSigningParams, encryptionParams);
+          serviceType, response, responsePayload, serverSigningParams, jweEncryptor);
     } catch (ParseException | JOSEException | IOException e) {
       throw new ServiceRequestHandlingException(
           "Error processing request: " + e.getMessage(), e, ErrorCode.ILLEGAL_REQUEST_DATA);
     }
   }
 
-  private JWEEncryptionParams createESDHEncryptionParams(
-      ClientPublicKeyRecord clientPublicKeyRecord, boolean encrypt) {
-    if (encrypt) {
-      return new JWEEncryptionParams(
-          (ECPublicKey) clientPublicKeyRecord.getPublicKey(), encryptionMethod);
-    }
-    return new JWEEncryptionParams(esdhStaticPrivateKey, encryptionMethod);
-  }
-
-  private JWEEncryptionParams createEncryptionParams(final ServerPakeRecord pakeSession)
-      throws ServiceRequestHandlingException, ParseException, JOSEException {
+  private SymmetricJweCipher createEncryptionParams(final ServerPakeRecord pakeSession)
+      throws ServiceRequestHandlingException {
     if (pakeSession == null) {
       throw new ServiceRequestHandlingException(
           "No matching PAKE session for decrypting this request", ErrorCode.ACCESS_DENIED);
@@ -230,7 +225,7 @@ public class DefaultServiceRequestHandler implements ServiceRequestHandler {
       throw new ServiceRequestHandlingException(
           "Pake session has expired", ErrorCode.ACCESS_DENIED);
     }
-    return new JWEEncryptionParams(
+    return new SymmetricJweCipher(
         new SecretKeySpec(pakeSession.getSessionKey(), "AES"), encryptionMethod);
   }
 }

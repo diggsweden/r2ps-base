@@ -13,11 +13,11 @@ import se.digg.wallet.r2ps.commons.StaticResources;
 import se.digg.wallet.r2ps.commons.dto.EncryptOption;
 import se.digg.wallet.r2ps.commons.dto.ErrorResponse;
 import se.digg.wallet.r2ps.commons.dto.HttpResponse;
-import se.digg.wallet.r2ps.commons.dto.JWEEncryptionParams;
 import se.digg.wallet.r2ps.commons.dto.ServiceResponse;
 import se.digg.wallet.r2ps.commons.dto.servicetype.ServiceType;
 import se.digg.wallet.r2ps.commons.dto.servicetype.ServiceTypeRegistry;
 import se.digg.wallet.r2ps.commons.exception.ServiceResponseException;
+import se.digg.wallet.r2ps.commons.jwe.JweDecryptor;
 import se.digg.wallet.r2ps.commons.utils.Utils;
 
 public class ServiceResponseParser {
@@ -30,7 +30,7 @@ public class ServiceResponseParser {
 
   public static ServiceResult parse(
       final HttpResponse httpResponse,
-      JWEEncryptionParams encryptionParams,
+      JweDecryptor jweDecryptor,
       ClientContextConfiguration clientContextConfiguration,
       final String serviceTypeId,
       ServiceTypeRegistry serviceTypeRegistry)
@@ -62,14 +62,9 @@ public class ServiceResponseParser {
         }
         final byte[] serviceData = serviceResponse.getServiceData();
         final ServiceType serviceType = serviceTypeRegistry.getServiceType(serviceTypeId);
-        decryptedPayload = serviceData;
-        if (EncryptOption.user == serviceType.encryptKey()) {
-          decryptedPayload = Utils.decryptJWE(serviceData, encryptionParams);
-        }
-        if (EncryptOption.device == serviceType.encryptKey()) {
-          decryptedPayload =
-              Utils.decryptJWEECDH(serviceData, encryptionParams.staticPrivateRecipientKey());
-        }
+
+        decryptedPayload = jweDecryptor.decrypt(serviceData);
+
         if (log.isDebugEnabled()) {
           log.debug(
               "Client received service response with valid signature:\n{}",
