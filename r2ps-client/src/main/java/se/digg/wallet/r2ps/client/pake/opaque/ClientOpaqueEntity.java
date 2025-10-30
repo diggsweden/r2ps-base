@@ -38,5 +38,4 @@ public class ClientOpaqueEntity {
       return this.clientOpaqueEntity;
     }
   }
-
 }

@@ -23,8 +23,6 @@ public class ServiceResponse extends ServiceExchange {
     }
 
     @Override
-    protected void validate() {
-    }
-
+    protected void validate() {}
   }
 }

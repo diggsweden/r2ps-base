@@ -5,5 +5,4 @@ public interface OpaqueClientRegistry {
   void putClientRegistrationRecord(byte[] sessionId, byte[] registrationRecord);
 
   byte[] getClientRegistrationRecord(byte[] sessionId);
-
 }

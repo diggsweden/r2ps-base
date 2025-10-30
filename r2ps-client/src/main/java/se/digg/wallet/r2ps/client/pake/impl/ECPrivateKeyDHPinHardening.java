@@ -1,5 +1,13 @@
 package se.digg.wallet.r2ps.client.pake.impl;
 
+import java.nio.charset.StandardCharsets;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.spec.InvalidKeySpecException;
+import javax.crypto.KeyAgreement;
 import org.bouncycastle.crypto.Digest;
 import org.bouncycastle.crypto.generators.HKDFBytesGenerator;
 import org.bouncycastle.crypto.params.HKDFParameters;
@@ -14,17 +22,8 @@ import se.digg.crypto.hashtocurve.impl.GenericCurveProcessor;
 import se.digg.crypto.hashtocurve.impl.GenericHashToField;
 import se.digg.crypto.hashtocurve.impl.ShallueVanDeWoestijneMapToCurve;
 import se.digg.crypto.hashtocurve.impl.XmdMessageExpansion;
-import se.digg.wallet.r2ps.commons.pake.ECUtils;
 import se.digg.wallet.r2ps.client.pake.PinHardening;
-
-import javax.crypto.KeyAgreement;
-import java.nio.charset.StandardCharsets;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
-import java.security.NoSuchProviderException;
-import java.security.PrivateKey;
-import java.security.PublicKey;
-import java.security.spec.InvalidKeySpecException;
+import se.digg.wallet.r2ps.commons.pake.ECUtils;
 
 /**
  * The ECPrivateKeyDHPinHardening class provides functionality for seeding a PIN based on elliptic
@@ -52,7 +51,7 @@ public class ECPrivateKeyDHPinHardening implements PinHardening {
    * values for initialization.
    *
    * @param profile the hash-to-curve profile that defines the elliptic curve, hashing, and mapping
-   *                parameters to be used
+   *     parameters to be used
    */
   public ECPrivateKeyDHPinHardening(final HashToCurveProfile profile) {
     this(profile, DEFAULT_DST);
@@ -63,9 +62,9 @@ public class ECPrivateKeyDHPinHardening implements PinHardening {
    * using default salt and info values.
    *
    * @param profile the hash-to-curve profile that defines the elliptic curve, hashing, and mapping
-   *                parameters to be used
-   * @param dst     the domain separation tag (DST), used to uniquely distinguish applications of a
-   *                hash-to-curve operation
+   *     parameters to be used
+   * @param dst the domain separation tag (DST), used to uniquely distinguish applications of a
+   *     hash-to-curve operation
    */
   public ECPrivateKeyDHPinHardening(final HashToCurveProfile profile, byte[] dst) {
     this(profile, dst, DEFAULT_SALT, DEFAULT_INFO);
@@ -75,25 +74,26 @@ public class ECPrivateKeyDHPinHardening implements PinHardening {
    * Constructs an ECPrivateKeyPinSeeder instance, initializing it with the specified parameters.
    *
    * @param profile the hash-to-curve profile that defines the elliptic curve, hashing, and mapping
-   *                parameters to be used
-   * @param dst     the domain separation tag (DST), used to uniquely distinguish applications of a
-   *                hash-to-curve operation
-   * @param salt    the optional salt value used during key derivation
-   * @param info    additional context-specific information used during key derivation
+   *     parameters to be used
+   * @param dst the domain separation tag (DST), used to uniquely distinguish applications of a
+   *     hash-to-curve operation
+   * @param salt the optional salt value used during key derivation
+   * @param info additional context-specific information used during key derivation
    */
-  public ECPrivateKeyDHPinHardening(final HashToCurveProfile profile, byte[] dst, byte[] salt,
-      byte[] info) {
+  public ECPrivateKeyDHPinHardening(
+      final HashToCurveProfile profile, byte[] dst, byte[] salt, byte[] info) {
     this.profile = profile;
     this.salt = salt;
     this.info = info;
     this.ecParameterSpec = ECUtils.getECParameterSpecFromProfile(profile);
     Digest digestAlgorithm = ECUtils.getDigestAlgorithmFromProfile(profile);
     MessageExpansion messageExpansion = new XmdMessageExpansion(digestAlgorithm, profile.getK());
-    HashToField hashToField = new GenericHashToField(dst, ecParameterSpec, messageExpansion,
-        profile.getL());
+    HashToField hashToField =
+        new GenericHashToField(dst, ecParameterSpec, messageExpansion, profile.getL());
     MapToCurve mapToCurve = new ShallueVanDeWoestijneMapToCurve(ecParameterSpec, profile.getZ());
-    this.hashToEllipticCurve = new HashToEllipticCurve(hashToField, mapToCurve,
-        new GenericCurveProcessor(ecParameterSpec));
+    this.hashToEllipticCurve =
+        new HashToEllipticCurve(
+            hashToField, mapToCurve, new GenericCurveProcessor(ecParameterSpec));
   }
 
   /** {@inheritDoc} */
@@ -117,8 +117,10 @@ public class ECPrivateKeyDHPinHardening implements PinHardening {
       hkdf.generateBytes(seededPin, 0, byteLength);
 
       return seededPin;
-    } catch (NoSuchAlgorithmException | InvalidKeySpecException | NoSuchProviderException |
-        InvalidKeyException e) {
+    } catch (NoSuchAlgorithmException
+        | InvalidKeySpecException
+        | NoSuchProviderException
+        | InvalidKeyException e) {
       throw new RuntimeException("Pin seeding error", e);
     }
   }

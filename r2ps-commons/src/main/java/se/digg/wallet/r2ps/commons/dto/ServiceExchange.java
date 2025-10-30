@@ -1,13 +1,10 @@
 package se.digg.wallet.r2ps.commons.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.time.Instant;
 import lombok.Data;
 
-import java.time.Instant;
-
-/**
- * Abstract class for signed service exchange messages (Requests and Responses).
- */
+/** Abstract class for signed service exchange messages (Requests and Responses). */
 @Data
 public abstract class ServiceExchange {
 
@@ -35,7 +32,8 @@ public abstract class ServiceExchange {
     this.version = "1.0";
   }
 
-  public static abstract class AbstractBuilder<T extends ServiceExchange, B extends AbstractBuilder<?, ?>> {
+  public abstract static class AbstractBuilder<
+      T extends ServiceExchange, B extends AbstractBuilder<?, ?>> {
     protected T serviceExchange;
 
     public AbstractBuilder(final T serviceExchange) {
@@ -56,11 +54,5 @@ public abstract class ServiceExchange {
       validate();
       return this.serviceExchange;
     }
-
-    ;
-
   }
-
-
-
 }

@@ -1,12 +1,11 @@
 package se.digg.wallet.r2ps.server.service.impl;
 
-import lombok.extern.slf4j.Slf4j;
-import se.digg.wallet.r2ps.server.service.ReplayChecker;
-
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
+import se.digg.wallet.r2ps.server.service.ReplayChecker;
 
 @Slf4j
 public class RpsOpsReplayChecker implements ReplayChecker {
@@ -22,7 +21,8 @@ public class RpsOpsReplayChecker implements ReplayChecker {
   @Override
   public boolean isReplay(final String nonce) {
     // Remove expired nonces from noncemap
-    nonceMap.entrySet()
+    nonceMap
+        .entrySet()
         .removeIf(entry -> Instant.now().isAfter(entry.getValue().plus(replayCheckDuration)));
 
     boolean replay = nonceMap.containsKey(nonce);

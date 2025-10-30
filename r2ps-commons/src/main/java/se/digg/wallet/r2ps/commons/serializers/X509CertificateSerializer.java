@@ -3,7 +3,6 @@ package se.digg.wallet.r2ps.commons.serializers;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
-
 import java.io.IOException;
 import java.security.cert.X509Certificate;
 

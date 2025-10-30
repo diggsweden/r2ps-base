@@ -42,35 +42,42 @@ public class OpaqueConfiguration {
 
   /** The Bouncycastle registered OPAQUE curve name. Default is P-256. */
   private String curveName;
+
   /** The Bouncycastle registered OPAQUE digest algorithm. Default is SHA-256. */
   private Digest opaqueDigestAlgorithm;
+
   /** The OPAQUE HashToCurveProfile. Default is P256_XMD_SHA_256_SSWU_RO_. */
   private HashToCurveProfile hashToCurveProfile;
+
   /** The OPAQUE stretch profile. Default is ARGON_PROFILE_DEFAULT. */
   private String stretchProfile;
+
   /** The OPAQUE DST context. Default is P256_SHA256. */
   private String opaqueDstContext;
+
   /** The application context DST. Default is RPS-Ops. */
   private String applicationContextDst;
 
   public OpaqueServer getOpaqueServer() {
-    return new DefaultOpaqueServer(getOprfFunctions(), getKeyDerivationFunctions(),
-        getHashFunctions());
+    return new DefaultOpaqueServer(
+        getOprfFunctions(), getKeyDerivationFunctions(), getHashFunctions());
   }
 
   public OpaqueClient getOpaqueClient() {
-    return new DefaultOpaqueClient(getOprfFunctions(), getKeyDerivationFunctions(),
-        getHashFunctions());
+    return new DefaultOpaqueClient(
+        getOprfFunctions(), getKeyDerivationFunctions(), getHashFunctions());
   }
 
   public HashFunctions getHashFunctions() {
-    return new HashFunctions(DigestFactory.cloneDigest(opaqueDigestAlgorithm),
-        new ArgonStretch(getStretchProfile()));
+    return new HashFunctions(
+        DigestFactory.cloneDigest(opaqueDigestAlgorithm), new ArgonStretch(getStretchProfile()));
   }
 
   public OpaqueCurve getOpaqueCurve() {
-    return new DefaultOpaqueCurve(ECNamedCurveTable.getParameterSpec(curveName),
-        hashToCurveProfile, new DstContext(opaqueDstContext));
+    return new DefaultOpaqueCurve(
+        ECNamedCurveTable.getParameterSpec(curveName),
+        hashToCurveProfile,
+        new DstContext(opaqueDstContext));
   }
 
   public OprfFunctions getOprfFunctions() {
@@ -80,5 +87,4 @@ public class OpaqueConfiguration {
   public KeyDerivationFunctions getKeyDerivationFunctions() {
     return new HKDFKeyDerivation(getHashFunctions());
   }
-
 }

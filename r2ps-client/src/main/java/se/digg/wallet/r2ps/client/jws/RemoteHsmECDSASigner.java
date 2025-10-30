@@ -7,6 +7,8 @@ import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.JWSSigner;
 import com.nimbusds.jose.crypto.impl.ECDSAProvider;
 import com.nimbusds.jose.util.Base64URL;
+import java.io.IOException;
+import java.security.NoSuchAlgorithmException;
 import lombok.extern.slf4j.Slf4j;
 import org.bouncycastle.util.encoders.Hex;
 import se.digg.wallet.r2ps.client.api.R2PSClientApi;
@@ -20,9 +22,6 @@ import se.digg.wallet.r2ps.commons.exception.ServiceRequestException;
 import se.digg.wallet.r2ps.commons.exception.ServiceResponseException;
 import se.digg.wallet.r2ps.commons.pake.ECUtils;
 
-import java.io.IOException;
-import java.security.NoSuchAlgorithmException;
-
 @Slf4j
 public class RemoteHsmECDSASigner extends ECDSAProvider implements JWSSigner {
 
@@ -31,8 +30,12 @@ public class RemoteHsmECDSASigner extends ECDSAProvider implements JWSSigner {
   private final String hsmKeyIdentifier;
   private final String sessionId;
 
-  public RemoteHsmECDSASigner(final R2PSClientApi clientApi, final String hsmContext,
-      final String hsmKeyIdentifier, JWSAlgorithm jwsAlgorithm, final String sessionId)
+  public RemoteHsmECDSASigner(
+      final R2PSClientApi clientApi,
+      final String hsmContext,
+      final String hsmKeyIdentifier,
+      JWSAlgorithm jwsAlgorithm,
+      final String sessionId)
       throws JsonProcessingException, JOSEException {
     super(jwsAlgorithm);
     this.clientApi = clientApi;
@@ -46,25 +49,34 @@ public class RemoteHsmECDSASigner extends ECDSAProvider implements JWSSigner {
 
     log.debug(
         "ECDSA Signing with JWS remote signer using kid {}, context {} and signed data hash {}",
-        hsmKeyIdentifier, hsmContext,
+        hsmKeyIdentifier,
+        hsmContext,
         Hex.toHexString(signingInput));
     try {
       final String algorithmName = header.getAlgorithm().getName();
       final int signaturePartLength = getSignaturePartLength(algorithmName);
       String digestAlgorithm = getDigestAlgorithm(algorithmName);
-      final SignRequestPayload ecdsaSignRequest = SignRequestPayload.builder()
-          .kid(hsmKeyIdentifier)
-          .tbsHash(signingInput, digestAlgorithm)
-          .build();
+      final SignRequestPayload ecdsaSignRequest =
+          SignRequestPayload.builder()
+              .kid(hsmKeyIdentifier)
+              .tbsHash(signingInput, digestAlgorithm)
+              .build();
       byte[] signatureValue =
-          clientApi.userAuthenticatedService(ServiceType.HSM_ECDSA, ecdsaSignRequest, hsmContext,
-              sessionId).getPayload(ByteArrayPayload.class).getByteArrayValue();
+          clientApi
+              .userAuthenticatedService(
+                  ServiceType.HSM_ECDSA, ecdsaSignRequest, hsmContext, sessionId)
+              .getPayload(ByteArrayPayload.class)
+              .getByteArrayValue();
       log.debug("Produced ASN.1 formatted ECDSA signature: {}", Hex.toHexString(signatureValue));
       return Base64URL.encode(
           ECUtils.ecdsaSignatureAsn1ToConcat(signatureValue, signaturePartLength));
-    } catch (PakeSessionException | ServiceResponseException | IOException |
-        PayloadParsingException | NoSuchAlgorithmException | PakeAuthenticationException |
-        ServiceRequestException e) {
+    } catch (PakeSessionException
+        | ServiceResponseException
+        | IOException
+        | PayloadParsingException
+        | NoSuchAlgorithmException
+        | PakeAuthenticationException
+        | ServiceRequestException e) {
       throw new JOSEException(e);
     }
   }
@@ -86,5 +98,4 @@ public class RemoteHsmECDSASigner extends ECDSAProvider implements JWSSigner {
       default -> throw new JOSEException("Unsupported JWS algorithm: " + algorithm);
     };
   }
-
 }

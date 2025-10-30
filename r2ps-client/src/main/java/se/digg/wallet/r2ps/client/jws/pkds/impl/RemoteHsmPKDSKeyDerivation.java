@@ -1,6 +1,7 @@
 package se.digg.wallet.r2ps.client.jws.pkds.impl;
 
 import com.nimbusds.jose.JOSEException;
+import java.security.interfaces.ECPublicKey;
 import se.digg.wallet.r2ps.client.api.R2PSClientApi;
 import se.digg.wallet.r2ps.client.jws.pkds.PKDSSuite;
 import se.digg.wallet.r2ps.commons.dto.payload.ByteArrayPayload;
@@ -12,8 +13,6 @@ import se.digg.wallet.r2ps.commons.exception.PayloadParsingException;
 import se.digg.wallet.r2ps.commons.exception.ServiceRequestException;
 import se.digg.wallet.r2ps.commons.exception.ServiceResponseException;
 
-import java.security.interfaces.ECPublicKey;
-
 public class RemoteHsmPKDSKeyDerivation extends AbstractEcdhHkdfKeyDerivation {
 
   private final R2PSClientApi clientApi;
@@ -21,7 +20,9 @@ public class RemoteHsmPKDSKeyDerivation extends AbstractEcdhHkdfKeyDerivation {
   private final String hsmKeyIdentifier;
   private final String sessionId;
 
-  public RemoteHsmPKDSKeyDerivation(final R2PSClientApi clientApi, final String hsmContext,
+  public RemoteHsmPKDSKeyDerivation(
+      final R2PSClientApi clientApi,
+      final String hsmContext,
       final String hsmKeyIdentifier,
       final String sessionId) {
     this.clientApi = clientApi;
@@ -36,18 +37,24 @@ public class RemoteHsmPKDSKeyDerivation extends AbstractEcdhHkdfKeyDerivation {
   }
 
   @Override
-  protected byte[] diffieHellman(final ECPublicKey recipientPublicKey)
-      throws JOSEException {
+  protected byte[] diffieHellman(final ECPublicKey recipientPublicKey) throws JOSEException {
     try {
-      return clientApi.userAuthenticatedService(ServiceType.HSM_ECDH,
-          DHRequestPayload.builder()
-              .kid(hsmKeyIdentifier)
-              .publicKey(recipientPublicKey)
-              .build(),
-          hsmContext, sessionId).getPayload(ByteArrayPayload.class).getByteArrayValue();
-    } catch (PakeAuthenticationException | ServiceRequestException | PakeSessionException |
-        PayloadParsingException |
-        ServiceResponseException e) {
+      return clientApi
+          .userAuthenticatedService(
+              ServiceType.HSM_ECDH,
+              DHRequestPayload.builder()
+                  .kid(hsmKeyIdentifier)
+                  .publicKey(recipientPublicKey)
+                  .build(),
+              hsmContext,
+              sessionId)
+          .getPayload(ByteArrayPayload.class)
+          .getByteArrayValue();
+    } catch (PakeAuthenticationException
+        | ServiceRequestException
+        | PakeSessionException
+        | PayloadParsingException
+        | ServiceResponseException e) {
       throw new JOSEException("Failed to perform Remote HSM Diffie-Hellman", e);
     }
   }

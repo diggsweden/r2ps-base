@@ -1,10 +1,9 @@
 package se.digg.wallet.r2ps.commons.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.Objects;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-
-import java.util.Objects;
 
 @EqualsAndHashCode(callSuper = true)
 @Data
@@ -45,8 +44,8 @@ public class ServiceRequest extends ServiceExchange {
     protected void validate() {
       Objects.requireNonNull(this.serviceExchange.getClientID(), "The client ID is not set");
       Objects.requireNonNull(this.serviceExchange.getKid(), "The key identifier is not set");
-      Objects.requireNonNull(this.serviceExchange.getServiceType(),
-          "The exchange service type is not set");
+      Objects.requireNonNull(
+          this.serviceExchange.getServiceType(), "The exchange service type is not set");
     }
 
     public Builder clientID(final String clientID) {
@@ -73,8 +72,5 @@ public class ServiceRequest extends ServiceExchange {
       this.serviceExchange.setServiceType(serviceType);
       return this;
     }
-
   }
-
-
 }

@@ -1,6 +1,9 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<?xml version="1.0" encoding="UTF-8" ?>
+<project
+  xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+>
 
   <modelVersion>4.0.0</modelVersion>
 
@@ -23,6 +26,20 @@
     </developer>
   </developers>
 
+  <repositories>
+    <repository>
+      <name>Central Portal Snapshots</name>
+      <id>central-portal-snapshots</id>
+      <url>https://central.sonatype.com/repository/maven-snapshots/</url>
+      <releases>
+        <enabled>false</enabled>
+      </releases>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
+    </repository>
+  </repositories>
+
   <organization>
     <name>DIGG</name>
     <url>https://digg.se</url>
@@ -36,7 +53,7 @@
     <nimbus.version>10.5</nimbus.version>
     <jackson.version>2.19.2</jackson.version>
     <digg.opaque.version>1.0.2-SNAPSHOT</digg.opaque.version>
-    <digg.hash2curve.version>1.1.1-SNAPSHOT</digg.hash2curve.version>
+    <digg.hash2curve.version>0.8.0-SNAPSHOT</digg.hash2curve.version>
     <slf4j.version>2.0.17</slf4j.version>
     <junit.jupiter.version>5.12.2</junit.jupiter.version>
     <jakarta.version>3.0.0</jakarta.version>
@@ -91,7 +108,7 @@
       </dependency>
       <dependency>
         <groupId>se.digg.crypto</groupId>
-        <artifactId>hash-to-curve</artifactId>
+        <artifactId>hash2curve</artifactId>
         <version>${digg.hash2curve.version}</version>
       </dependency>
       <dependency>
@@ -168,11 +185,26 @@
             <id>enforce</id>
             <configuration>
               <rules>
-                <dependencyConvergence/>
+                <dependencyConvergence />
               </rules>
             </configuration>
             <goals>
               <goal>enforce</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-source-plugin</artifactId>
+        <version>3.3.0</version>
+        <executions>
+          <execution>
+            <id>attach-sources</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>jar-no-fork</goal>
             </goals>
           </execution>
         </executions>
@@ -204,6 +236,26 @@
         <artifactId>maven-javadoc-plugin</artifactId>
       </plugin>
 
+<!--      run mvn spotless:apply/check to format/check all code according to google-code-style-->
+<!--      This plugin is currently not assigned to any phase and will not run automatically-->
+      <plugin>
+          <groupId>com.diffplug.spotless</groupId>
+          <artifactId>spotless-maven-plugin</artifactId>
+          <version>2.43.0</version> <configuration>
+          <java>
+              <googleJavaFormat>
+                  <version>1.27.0</version>
+                  <style>GOOGLE</style>
+              </googleJavaFormat>
+          </java>
+      </configuration>
+<!--          <executions>-->
+<!--              <execution>-->
+<!--                  <goals>-->
+<!--                      <goal>check</goal> <goal>apply</goal> </goals>-->
+<!--              </execution>-->
+<!--          </executions>-->
+      </plugin>
     </plugins>
 
   </build>

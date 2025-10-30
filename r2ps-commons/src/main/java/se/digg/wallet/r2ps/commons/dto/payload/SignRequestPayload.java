@@ -3,14 +3,13 @@ package se.digg.wallet.r2ps.commons.dto.payload;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import java.io.IOException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import se.digg.wallet.r2ps.commons.StaticResources;
-
-import java.io.IOException;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 
 @Data
 @AllArgsConstructor
@@ -19,6 +18,7 @@ public class SignRequestPayload implements ExchangePayload<SignRequestPayload>, 
 
   @JsonProperty(KEY_IDENTIFIER)
   String kid;
+
   @JsonProperty(TBS_HASH)
   byte[] tbsHash;
 
@@ -65,7 +65,5 @@ public class SignRequestPayload implements ExchangePayload<SignRequestPayload>, 
     public SignRequestPayload build() {
       return this.signRequestPayload;
     }
-
   }
-
 }

@@ -1,15 +1,11 @@
 package se.digg.wallet.r2ps.commons.dto.servicetype;
 
 import jakarta.annotation.Nonnull;
-import se.digg.wallet.r2ps.commons.dto.EncryptOption;
-
 import java.util.HashMap;
 import java.util.Map;
+import se.digg.wallet.r2ps.commons.dto.EncryptOption;
 
-/**
- * Registry for service types
- *
- */
+/** Registry for service types */
 public class ServiceTypeRegistry {
 
   Map<String, ServiceType> serviceTypes;
@@ -38,7 +34,8 @@ public class ServiceTypeRegistry {
    *
    * @param id the unique identifier for the service type to retrieve
    * @return the {@link ServiceType} corresponding to the given ID
-   * @throws IllegalArgumentException if the specified ID does not correspond to a recognized service type
+   * @throws IllegalArgumentException if the specified ID does not correspond to a recognized
+   *     service type
    */
   @Nonnull
   public ServiceType getServiceType(String id) {
@@ -59,6 +56,11 @@ public class ServiceTypeRegistry {
     this.serviceTypes.put(serviceType.id(), serviceType);
   }
 
+  public void registerServiceType(String id, EncryptOption encryptKey) {
+    ServiceType serviceType = new ServiceType(id, encryptKey);
+    this.registerServiceType(serviceType);
+  }
+
   /**
    * Removes a service type from the registry.
    *
@@ -71,15 +73,10 @@ public class ServiceTypeRegistry {
   /**
    * Removes all service types from the registry.
    *
-   * This method clears all entries in the internal map of service types, leaving the registry empty.
+   * <p>This method clears all entries in the internal map of service types, leaving the registry
+   * empty.
    */
   public void removeAllServiceTypes() {
     this.serviceTypes.clear();
   }
-
-  public void registerServiceType(String id, EncryptOption encryptKey) {
-    ServiceType serviceType = new ServiceType(id, encryptKey);
-    this.registerServiceType(serviceType);
-  }
-
 }

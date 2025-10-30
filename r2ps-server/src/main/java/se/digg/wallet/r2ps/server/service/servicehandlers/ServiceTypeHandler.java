@@ -11,9 +11,11 @@ public interface ServiceTypeHandler {
 
   boolean supports(final ServiceType serviceType, final String context);
 
-  ExchangePayload<?> processServiceRequest(ServiceRequest serviceRequest,
-      ServerPakeRecord pakeSession, byte[] decryptedPayload,
-      ClientPublicKeyRecord clientPublicKeyRecord, ServiceType serviceType)
+  ExchangePayload<?> processServiceRequest(
+      ServiceRequest serviceRequest,
+      ServerPakeRecord pakeSession,
+      byte[] decryptedPayload,
+      ClientPublicKeyRecord clientPublicKeyRecord,
+      ServiceType serviceType)
       throws ServiceRequestHandlingException;
-
 }

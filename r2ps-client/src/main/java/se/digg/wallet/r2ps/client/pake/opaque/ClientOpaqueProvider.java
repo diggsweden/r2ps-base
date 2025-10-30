@@ -1,5 +1,6 @@
 package se.digg.wallet.r2ps.client.pake.opaque;
 
+import java.nio.charset.StandardCharsets;
 import lombok.Getter;
 import se.digg.crypto.opaque.client.ClientKeyExchangeResult;
 import se.digg.crypto.opaque.client.ClientState;
@@ -16,22 +17,16 @@ import se.digg.crypto.opaque.error.ServerAuthenticationException;
 import se.digg.wallet.r2ps.commons.exception.PakeSessionException;
 import se.digg.wallet.r2ps.commons.pake.opaque.PakeSessionRegistry;
 
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
-import java.time.Instant;
-
 public class ClientOpaqueProvider {
 
   private final ClientOpaqueEntity clientOpaqueEntity;
-  @Getter
-  private final PakeSessionRegistry<ClientPakeRecord> sessionRegistry;
-  private final Duration recordDuration;
+  @Getter private final PakeSessionRegistry<ClientPakeRecord> sessionRegistry;
 
-  public ClientOpaqueProvider(final ClientOpaqueEntity clientOpaqueEntity,
-      final PakeSessionRegistry<ClientPakeRecord> sessionRegistry, Duration recordDuration) {
+  public ClientOpaqueProvider(
+      final ClientOpaqueEntity clientOpaqueEntity,
+      final PakeSessionRegistry<ClientPakeRecord> sessionRegistry) {
     this.clientOpaqueEntity = clientOpaqueEntity;
     this.sessionRegistry = sessionRegistry;
-    this.recordDuration = recordDuration;
   }
 
   public RegistrationRequestResult createRegistrationRequest(byte[] pin)
@@ -39,15 +34,18 @@ public class ClientOpaqueProvider {
     return clientOpaqueEntity.getOpaqueClient().createRegistrationRequest(pin);
   }
 
-  public RegistrationRecord finalizeRegistrationRequest(byte[] pin, byte[] blind,
-      byte[] registrationResponse, String serverIdentity)
+  public RegistrationRecord finalizeRegistrationRequest(
+      byte[] pin, byte[] blind, byte[] registrationResponse, String serverIdentity)
       throws InvalidInputException, DeriveKeyPairErrorException, DeserializationException {
     final RegistrationFinalizationResult registrationFinalizationResult =
-        clientOpaqueEntity.getOpaqueClient()
-            .finalizeRegistrationRequest(pin, blind, registrationResponse,
+        clientOpaqueEntity
+            .getOpaqueClient()
+            .finalizeRegistrationRequest(
+                pin,
+                blind,
+                registrationResponse,
                 serverIdentity.getBytes(StandardCharsets.UTF_8),
-                clientOpaqueEntity.getClientIdentity().getBytes(
-                    StandardCharsets.UTF_8));
+                clientOpaqueEntity.getClientIdentity().getBytes(StandardCharsets.UTF_8));
     return registrationFinalizationResult.registrationRecord();
   }
 
@@ -57,26 +55,38 @@ public class ClientOpaqueProvider {
     return ke1;
   }
 
-  public KE3 authenticationFinalize(byte[] ke2, String pakeSessionId, String context, String kid,
-      ClientState clientState, String serverIdentity, String requestedTask)
-      throws InvalidInputException, EvelopeRecoveryException, ServerAuthenticationException,
-      DeriveKeyPairErrorException, DeserializationException {
+  public KE3 authenticationFinalize(
+      byte[] ke2,
+      String pakeSessionId,
+      String context,
+      String kid,
+      ClientState clientState,
+      String serverIdentity,
+      String requestedTask)
+      throws InvalidInputException,
+          EvelopeRecoveryException,
+          ServerAuthenticationException,
+          DeriveKeyPairErrorException,
+          DeserializationException {
     final ClientKeyExchangeResult clientKeyExchangeResult =
-        clientOpaqueEntity.getOpaqueClient().generateKe3(
-            clientOpaqueEntity.getClientIdentity().getBytes(StandardCharsets.UTF_8),
-            serverIdentity.getBytes(StandardCharsets.UTF_8),
-            ke2, clientState
-        );
+        clientOpaqueEntity
+            .getOpaqueClient()
+            .generateKe3(
+                clientOpaqueEntity.getClientIdentity().getBytes(StandardCharsets.UTF_8),
+                serverIdentity.getBytes(StandardCharsets.UTF_8),
+                ke2,
+                clientState);
 
-    ClientPakeRecord pakeSessionRecord = ClientPakeRecord.builder()
-        .clientId(clientOpaqueEntity.getClientIdentity())
-        .pakeSessionId(pakeSessionId)
-        .kid(kid)
-        .context(context)
-        .requestedSessionTaskId(requestedTask)
-        .sessionKey(clientKeyExchangeResult.sessionKey())
-        .exportKey(clientKeyExchangeResult.exportKey())
-        .build();
+    ClientPakeRecord pakeSessionRecord =
+        ClientPakeRecord.builder()
+            .clientId(clientOpaqueEntity.getClientIdentity())
+            .pakeSessionId(pakeSessionId)
+            .kid(kid)
+            .context(context)
+            .requestedSessionTaskId(requestedTask)
+            .sessionKey(clientKeyExchangeResult.sessionKey())
+            .exportKey(clientKeyExchangeResult.exportKey())
+            .build();
     sessionRegistry.addPakeSession(pakeSessionRecord);
     return clientKeyExchangeResult.ke3();
   }

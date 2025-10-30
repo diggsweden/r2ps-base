@@ -11,7 +11,4 @@ public interface HSMParams {
   // Parameter values
   String OPTION_SIGN_HASHED = "sign_hashed";
   String OPTION_DIFFIE_HELLMAN = "dh";
-
-
-
 }

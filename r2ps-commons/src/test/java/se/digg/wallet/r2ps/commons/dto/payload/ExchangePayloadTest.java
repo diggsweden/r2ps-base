@@ -2,7 +2,6 @@ package se.digg.wallet.r2ps.commons.dto.payload;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.EncryptionMethod;
 import com.nimbusds.jose.JWSAlgorithm;
@@ -35,7 +34,6 @@ import se.digg.crypto.opaque.crypto.impl.DefaultOpaqueCurve;
 import se.digg.crypto.opaque.crypto.impl.DefaultOprfFunction;
 import se.digg.crypto.opaque.crypto.impl.HKDFKeyDerivation;
 import se.digg.crypto.opaque.dto.KE1;
-import se.digg.crypto.opaque.server.keys.KeyPairRecord;
 import se.digg.wallet.r2ps.commons.dto.JWEEncryptionParams;
 import se.digg.wallet.r2ps.commons.dto.JWSSigningParams;
 import se.digg.wallet.r2ps.commons.dto.PakeState;
@@ -65,31 +63,29 @@ class ExchangePayloadTest {
     if (Security.getProvider("BC") == null) {
       Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
     }
-    sha256hash = new HashFunctions(SHA256Digest.newInstance(),
-        new ArgonStretch(ArgonStretch.ARGON_PROFILE_DEFAULT));
+    sha256hash =
+        new HashFunctions(
+            SHA256Digest.newInstance(), new ArgonStretch(ArgonStretch.ARGON_PROFILE_DEFAULT));
     hkdfKeyDerivation = new HKDFKeyDerivation(sha256hash);
-    p256Curve = new DefaultOpaqueCurve(ECNamedCurveTable.getParameterSpec("P-256"),
-        HashToCurveProfile.P256_XMD_SHA_256_SSWU_RO_,
-        new DstContext(DstContext.IDENTIFIER_P256_SHA256));
+    p256Curve =
+        new DefaultOpaqueCurve(
+            ECNamedCurveTable.getParameterSpec("P-256"),
+            HashToCurveProfile.P256_XMD_SHA_256_SSWU_RO_,
+            new DstContext(DstContext.IDENTIFIER_P256_SHA256));
     oprfP256 = new DefaultOprfFunction(p256Curve, sha256hash, "OPAQUE-POC");
     serviceTypeRegistry = new ServiceTypeRegistry();
     serviceExchangeFactory = new ServiceExchangeFactory();
   }
-
 
   @Test
   void createExchangeTokenTest() throws Exception {
 
     OpaqueClient client = new DefaultOpaqueClient(oprfP256, hkdfKeyDerivation, sha256hash);
 
-
-    byte[] oprfSeed = OpaqueUtils.random(32);
-    KeyPairRecord serverKeyPair = new KeyPairRecord(
-        ECUtils.serializePublicKey(TestCredentials.serverKeyPair.getPublic()),
-        TestCredentials.serverKeyPair.getPrivate().getEncoded()
-    );
-    JWSSigningParams signingParams = new JWSSigningParams(new ECDSASigner(
-        (ECPrivateKey) TestCredentials.p256keyPair.getPrivate()), JWSAlgorithm.ES256);
+    JWSSigningParams signingParams =
+        new JWSSigningParams(
+            new ECDSASigner((ECPrivateKey) TestCredentials.p256keyPair.getPrivate()),
+            JWSAlgorithm.ES256);
 
     final byte[] seededPin = OpaqueUtils.random(32);
     log.info("Seeded PIN: {}", Hex.toHexString(seededPin));
@@ -97,47 +93,55 @@ class ExchangePayloadTest {
     ClientState clientState = new ClientState();
     final KE1 ke1 = client.generateKe1(seededPin, clientState);
 
-    ServiceRequest request = ServiceRequest.builder()
-        .clientID("ID-198357382432")
-        .kid(Base64.toBase64String(
-            ECUtils.serializePublicKey(TestCredentials.p256keyPair.getPublic())))
-        .nonce("nonce-123456")
-        .serviceType(ServiceType.AUTHENTICATE)
-        .build();
+    ServiceRequest request =
+        ServiceRequest.builder()
+            .clientID("ID-198357382432")
+            .kid(
+                Base64.toBase64String(
+                    ECUtils.serializePublicKey(TestCredentials.p256keyPair.getPublic())))
+            .nonce("nonce-123456")
+            .serviceType(ServiceType.AUTHENTICATE)
+            .build();
 
-    PakeRequestPayload payload = PakeRequestPayload.builder()
-        .state(PakeState.evaluate)
-        .requestData(ke1.getEncoded())
-        .build();
+    PakeRequestPayload payload =
+        PakeRequestPayload.builder()
+            .state(PakeState.evaluate)
+            .requestData(ke1.getEncoded())
+            .build();
 
     JWEEncryptionParams encryptionParams =
-        new JWEEncryptionParams((ECPublicKey) TestCredentials.serverKeyPair.getPublic(),
-            EncryptionMethod.A128GCM);
+        new JWEEncryptionParams(
+            (ECPublicKey) TestCredentials.serverKeyPair.getPublic(), EncryptionMethod.A128GCM);
 
     final String serviceExchangeObject =
         serviceExchangeFactory.createServiceExchangeObject(
-            serviceTypeRegistry.getServiceType(ServiceType.AUTHENTICATE), request,
-            payload, signingParams, encryptionParams);
+            serviceTypeRegistry.getServiceType(ServiceType.AUTHENTICATE),
+            request,
+            payload,
+            signingParams,
+            encryptionParams);
     assertNotNull(serviceExchangeObject);
     logExchange(serviceExchangeObject, (ECPrivateKey) TestCredentials.serverKeyPair.getPrivate());
 
     // Create Server response
-    ServiceResponse serviceResponse = ServiceResponse.builder()
-        .nonce("nonce-123456")
-        .build();
-    PakeResponsePayload pakeResponsePayload = PakeResponsePayload.builder()
-        .pakeSessionId("session-id-123456")
-        .responseData("Ke2-response bytes".getBytes())
-        .build();
+    ServiceResponse serviceResponse = ServiceResponse.builder().nonce("nonce-123456").build();
+    PakeResponsePayload pakeResponsePayload =
+        PakeResponsePayload.builder()
+            .pakeSessionId("session-id-123456")
+            .responseData("Ke2-response bytes".getBytes())
+            .build();
 
     JWEEncryptionParams serverEncryptionParams =
-        new JWEEncryptionParams((ECPublicKey) TestCredentials.p256keyPair.getPublic(),
-            EncryptionMethod.A128GCM);
+        new JWEEncryptionParams(
+            (ECPublicKey) TestCredentials.p256keyPair.getPublic(), EncryptionMethod.A128GCM);
 
     final String serviceResponseExchange =
         serviceExchangeFactory.createServiceExchangeObject(
             serviceTypeRegistry.getServiceType(ServiceType.AUTHENTICATE),
-            serviceResponse, pakeResponsePayload, signingParams, serverEncryptionParams);
+            serviceResponse,
+            pakeResponsePayload,
+            signingParams,
+            serverEncryptionParams);
     assertNotNull(serviceResponseExchange);
     logExchange(serviceResponseExchange, (ECPrivateKey) TestCredentials.p256keyPair.getPrivate());
   }
@@ -147,20 +151,21 @@ class ExchangePayloadTest {
     log.info("Service exchange object for OPAQUE exchange:\n{}", serviceExchangeObject);
     final Map<String, Object> signedPayload =
         JWSObject.parse(serviceExchangeObject).getPayload().toJSONObject();
-    log.info("Signed payload:\n{}",
+    log.info(
+        "Signed payload:\n{}",
         mapper.writerWithDefaultPrettyPrinter().writeValueAsString(signedPayload));
 
     final Object serviceData = signedPayload.get("data");
     final byte[] serviceDataBytes = Base64.decode(serviceData.toString());
     log.info("ESDH Encrypted Service data:\n{}", serviceData);
-    final byte[] decrypted = Utils.decryptJWE_ECDH(serviceDataBytes, decryptionStaticKey);
+    final byte[] decrypted = Utils.decryptJWEECDH(serviceDataBytes, decryptionStaticKey);
     final String serviceDataString = new String(decrypted, StandardCharsets.UTF_8);
-    log.info("Decrypted Service data:\n{}", prettyPrint(new String(serviceDataString)));
+    log.info("Decrypted Service data:\n{}", prettyPrint(serviceDataString));
   }
 
   private String prettyPrint(final String jsonString) throws Exception {
-    return mapper.writerWithDefaultPrettyPrinter()
+    return mapper
+        .writerWithDefaultPrettyPrinter()
         .writeValueAsString(mapper.readValue(jsonString, Map.class));
   }
-
 }

@@ -117,7 +117,7 @@ done
 
 if [ "${PASSWD}" == "" ]; then
   echo -n "Keystore password: "
-  read -s PASSWD
+  read -r -s PASSWD
   echo
 fi
 if [ "$DN" == "" ]; then
@@ -190,12 +190,12 @@ if [ "${KEY_TYPE:0:2}" == "EC" ]; then
   ALGO_PARAM=${KEY_TYPE:3}
 
   echo "Generating EC key pair of type: $ALGO_PARAM" >&1
-  openssl ecparam -name $ALGO_PARAM -genkey -noout -out _temp/private.key
+  openssl ecparam -name "$ALGO_PARAM" -genkey -noout -out _temp/private.key
   openssl pkcs8 -topk8 -in _temp/private.key -passout "pass:$PASSWD" -out _temp/private.pem
 else
   echo "Generating RSA key pair of size: $ALGO_PARAM" >&1
   ALGO_PARAM=${KEY_TYPE:4}
-  openssl genrsa -aes128 -passout "pass:$PASSWD" -out _temp/private.pem $ALGO_PARAM
+  openssl genrsa -aes128 -passout "pass:$PASSWD" -out _temp/private.pem "$ALGO_PARAM"
 fi
 
 #
@@ -208,18 +208,18 @@ echo "Certificate valid for $VALID_DAYS days"
 openssl req -x509 -new \
   -key _temp/private.pem \
   -passin "pass:$PASSWD" \
-  -$HASH \
+  -"$HASH" \
   -config _temp/cert.cfg \
   -subj "$DN" \
   -days $((VALID_DAYS)) \
-  -out ${TARGET_FILE}.crt
+  -out "${TARGET_FILE}".crt
 
 echo "Creating P12 key store" >&1
 if [ -f "${TARGET_FILE}.p12" ]; then
   echo "Target .p12 file exists - removing old .p12" >&1
   rm "${TARGET_FILE}.p12"
 fi
-openssl pkcs12 -export -in ${TARGET_FILE}.crt -inkey _temp/private.pem -name "$ALIAS" -passin "pass:$PASSWD" -passout "pass:$PASSWD" -out ${TARGET_FILE}.p12
+openssl pkcs12 -export -in "${TARGET_FILE}".crt -inkey _temp/private.pem -name "$ALIAS" -passin "pass:$PASSWD" -passout "pass:$PASSWD" -out "${TARGET_FILE}".p12
 
 echo "Converting to JKS key store" >&1
 if [ -f "${TARGET_FILE}.jks" ]; then
@@ -227,10 +227,10 @@ if [ -f "${TARGET_FILE}.jks" ]; then
   rm "${TARGET_FILE}.jks"
 fi
 
-keytool -importkeystore -srckeystore ${TARGET_FILE}.p12 \
+keytool -importkeystore -srckeystore "${TARGET_FILE}".p12 \
   -srcstoretype PKCS12 \
   -srcstorepass "$PASSWD" \
-  -destkeystore ${TARGET_FILE}.jks \
+  -destkeystore "${TARGET_FILE}".jks \
   -deststoretype JKS \
   -deststorepass "$PASSWD"
 
