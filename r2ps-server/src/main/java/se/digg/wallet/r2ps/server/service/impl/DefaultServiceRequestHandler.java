@@ -31,7 +31,7 @@ import se.digg.wallet.r2ps.commons.dto.servicetype.ServiceType;
 import se.digg.wallet.r2ps.commons.dto.servicetype.ServiceTypeRegistry;
 import se.digg.wallet.r2ps.commons.exception.ServiceRequestHandlingException;
 import se.digg.wallet.r2ps.commons.pake.opaque.PakeSessionRegistry;
-import se.digg.wallet.r2ps.commons.utils.ServiceExchangeFactory;
+import se.digg.wallet.r2ps.commons.utils.ServiceExchangeBuilder;
 import se.digg.wallet.r2ps.commons.utils.Utils;
 import se.digg.wallet.r2ps.server.pake.opaque.ServerPakeRecord;
 import se.digg.wallet.r2ps.server.service.ClientPublicKeyRecord;
@@ -47,7 +47,6 @@ public class DefaultServiceRequestHandler implements ServiceRequestHandler {
   private final ClientPublicKeyRegistry clientPublicKeyRegistry;
   private final List<ServiceTypeHandler> serviceTypeHandlers;
   private final ServiceTypeRegistry serviceTypeRegistry;
-  private final ServiceExchangeFactory serviceExchangeFactory;
   private final JWSSigningParams serverSigningParams;
   private final ECPrivateKey esdhStaticPrivateKey;
   private final ReplayChecker replayChecker;
@@ -72,7 +71,6 @@ public class DefaultServiceRequestHandler implements ServiceRequestHandler {
     this.pakeSessionRegistry = configuration.getServerPakeSessionRegistry();
     this.clientPublicKeyRegistry = configuration.getClientPublicKeyRegistry();
     this.serviceTypeRegistry = configuration.getServiceTypeRegistry();
-    this.serviceExchangeFactory = new ServiceExchangeFactory();
     this.replayChecker = configuration.getReplayChecker();
   }
 
@@ -204,7 +202,7 @@ public class DefaultServiceRequestHandler implements ServiceRequestHandler {
 
       // Create the service response
       ServiceResponse response = ServiceResponse.builder().nonce(serviceRequest.getNonce()).build();
-      return serviceExchangeFactory.createServiceExchangeObject(
+      return ServiceExchangeBuilder.build(
           serviceType, response, responsePayload, serverSigningParams, encryptionParams);
     } catch (ParseException | JOSEException | IOException e) {
       throw new ServiceRequestHandlingException(

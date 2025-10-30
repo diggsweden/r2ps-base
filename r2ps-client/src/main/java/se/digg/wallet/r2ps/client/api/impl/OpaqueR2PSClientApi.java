@@ -6,10 +6,8 @@ import static se.digg.wallet.r2ps.commons.dto.PakeState.finalize;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.nimbusds.jose.EncryptionMethod;
 import com.nimbusds.jose.JOSEException;
-import com.nimbusds.jose.JWSObject;
 import java.io.IOException;
 import java.security.interfaces.ECPrivateKey;
-import java.text.ParseException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -39,8 +37,6 @@ import se.digg.wallet.r2ps.client.pake.opaque.ClientOpaqueProvider;
 import se.digg.wallet.r2ps.client.pake.opaque.ClientPakeRecord;
 import se.digg.wallet.r2ps.commons.StaticResources;
 import se.digg.wallet.r2ps.commons.dto.EncryptOption;
-import se.digg.wallet.r2ps.commons.dto.ErrorResponse;
-import se.digg.wallet.r2ps.commons.dto.HttpResponse;
 import se.digg.wallet.r2ps.commons.dto.JWEEncryptionParams;
 import se.digg.wallet.r2ps.commons.dto.PakeProtocol;
 import se.digg.wallet.r2ps.commons.dto.ServiceRequest;
@@ -56,8 +52,7 @@ import se.digg.wallet.r2ps.commons.exception.PakeAuthenticationException;
 import se.digg.wallet.r2ps.commons.exception.PakeSessionException;
 import se.digg.wallet.r2ps.commons.exception.ServiceRequestException;
 import se.digg.wallet.r2ps.commons.exception.ServiceResponseException;
-import se.digg.wallet.r2ps.commons.utils.ServiceExchangeFactory;
-import se.digg.wallet.r2ps.commons.utils.Utils;
+import se.digg.wallet.r2ps.commons.utils.ServiceExchangeBuilder;
 
 @Slf4j
 public class OpaqueR2PSClientApi implements R2PSClientApi {
@@ -65,7 +60,6 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
   private final String clientId;
   private final ClientOpaqueProvider opaqueProvider;
   private final ServiceExchangeConnector connector;
-  private final ServiceExchangeFactory serviceExchangeFactory;
   private final ServiceTypeRegistry serviceTypeRegistry;
 
   /** A map keyed by context, holding info about that context */
@@ -85,7 +79,6 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
         new ClientOpaqueProvider(clientOpaqueEntity, configuration.getClientPakeSessionRegistry());
     this.connector = configuration.getServiceExchangeConnector();
     this.serviceTypeRegistry = configuration.getServiceTypeRegistry();
-    this.serviceExchangeFactory = new ServiceExchangeFactory();
     this.contextInfoMap = configuration.getContextConfigurationMap();
     this.pinHardening =
         new ECPrivateKeyDHPinHardening(
@@ -132,18 +125,19 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
               .nonce(nonce)
               .build();
       final String pakeEvaluateRequest =
-          serviceExchangeFactory.createServiceExchangeObject(
+          ServiceExchangeBuilder.build(
               serviceTypeRegistry.getServiceType(ServiceType.AUTHENTICATE),
               pakeRequestWrapper,
               pakeEvaluatePayload,
               clientContextConfiguration.getSigningParams(),
               encryptionParams);
       final ServiceResult evaluateResult =
-          parseServiceResponse(
+          ServiceResponseParser.parse(
               connector.requestService(pakeEvaluateRequest),
               decryptionParams,
               clientContextConfiguration,
-              ServiceType.AUTHENTICATE);
+              ServiceType.AUTHENTICATE,
+              serviceTypeRegistry);
       verifyServiceResult(evaluateResult, ServiceType.AUTHENTICATE, nonce, context);
       PakeResponsePayload evaluateResponsePayload =
           StaticResources.TIME_STAMP_SECONDS_MAPPER.readValue(
@@ -181,18 +175,19 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
       pakeRequestWrapper.setNonce(nonce);
       pakeRequestWrapper.setServiceData(null);
       final String pakeFinalizeRequest =
-          serviceExchangeFactory.createServiceExchangeObject(
+          ServiceExchangeBuilder.build(
               serviceTypeRegistry.getServiceType(ServiceType.AUTHENTICATE),
               pakeRequestWrapper,
               pakeFinalizePayload,
               clientContextConfiguration.getSigningParams(),
               encryptionParams);
       final ServiceResult finalizeResult =
-          parseServiceResponse(
+          ServiceResponseParser.parse(
               connector.requestService(pakeFinalizeRequest),
               decryptionParams,
               clientContextConfiguration,
-              ServiceType.AUTHENTICATE);
+              ServiceType.AUTHENTICATE,
+              serviceTypeRegistry);
       verifyServiceResult(finalizeResult, ServiceType.AUTHENTICATE, nonce, context);
 
       PakeResponsePayload responsePayload =
@@ -386,18 +381,19 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
       decryptionParams = encryptionParams;
     }
     final String registrationEvaluateRequest =
-        serviceExchangeFactory.createServiceExchangeObject(
+        ServiceExchangeBuilder.build(
             serviceTypeRegistry.getServiceType(serviceTypeId),
             pakeRequestWrapper,
             registrationEvaluatePayload,
             clientContextConfiguration.getSigningParams(),
             encryptionParams);
     final ServiceResult registrationEvaluateResult =
-        parseServiceResponse(
+        ServiceResponseParser.parse(
             connector.requestService(registrationEvaluateRequest),
             decryptionParams,
             clientContextConfiguration,
-            serviceTypeId);
+            serviceTypeId,
+            serviceTypeRegistry);
     verifyServiceResult(
         registrationEvaluateResult,
         initialRegistration ? ServiceType.PIN_REGISTRATION : ServiceType.PIN_CHANGE,
@@ -426,18 +422,19 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
     pakeRequestWrapper.setServiceData(null);
 
     final String registrationFinalizeRequest =
-        serviceExchangeFactory.createServiceExchangeObject(
+        ServiceExchangeBuilder.build(
             serviceTypeRegistry.getServiceType(serviceTypeId),
             pakeRequestWrapper,
             registrationFinalizePayload,
             clientContextConfiguration.getSigningParams(),
             encryptionParams);
     final ServiceResult registrationFinalizeResult =
-        parseServiceResponse(
+        ServiceResponseParser.parse(
             connector.requestService(registrationFinalizeRequest),
             decryptionParams,
             clientContextConfiguration,
-            serviceTypeId);
+            serviceTypeId,
+            serviceTypeRegistry);
     verifyServiceResult(
         registrationFinalizeResult,
         initialRegistration ? ServiceType.PIN_REGISTRATION : ServiceType.PIN_CHANGE,
@@ -543,18 +540,19 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
               .build();
 
       final String serviceExchange =
-          serviceExchangeFactory.createServiceExchangeObject(
+          ServiceExchangeBuilder.build(
               serviceType,
               serviceRequest,
               payload,
               clientContextConfiguration.getSigningParams(),
               encryptionParams);
       final ServiceResult serviceResult =
-          parseServiceResponse(
+          ServiceResponseParser.parse(
               connector.requestService(serviceExchange),
               decryptionParams,
               clientContextConfiguration,
-              serviceType.id());
+              serviceType.id(),
+              serviceTypeRegistry);
       // If the service request was an error. Return the error response
       if (!serviceResult.success()) {
         return serviceResult;
@@ -577,78 +575,6 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
     return new JWEEncryptionParams(
         (ECPrivateKey) clientContextConfiguration.getContextKeyPair().getPrivate(),
         encryptionMethod);
-  }
-
-  private ServiceResult parseServiceResponse(
-      final HttpResponse httpResponse,
-      JWEEncryptionParams encryptionParams,
-      ClientContextConfiguration clientContextConfiguration,
-      final String serviceTypeId)
-      throws ServiceResponseException {
-    if (httpResponse == null) {
-      throw new ServiceResponseException("No service response from server");
-    }
-    final String responseData = httpResponse.responseData();
-    if (responseData == null) {
-      throw new ServiceResponseException("No service response data from server");
-    }
-    try {
-      final int responseCode = httpResponse.responseCode();
-      boolean success = responseCode == 200;
-      ServiceResponse serviceResponse = null;
-      ErrorResponse errorResponse = null;
-      byte[] decryptedPayload = null;
-      if (success) {
-        JWSObject jwsObject = JWSObject.parse(responseData);
-        if (!jwsObject.verify(clientContextConfiguration.getServerVerifier())) {
-          throw new ServiceResponseException("Failed to verify service response signature");
-        }
-        jwsObject.getPayload().toJSONObject();
-        serviceResponse =
-            StaticResources.TIME_STAMP_SECONDS_MAPPER.convertValue(
-                jwsObject.getPayload().toJSONObject(), ServiceResponse.class);
-        if (Instant.now().isAfter(serviceResponse.getIat().plusSeconds(30))) {
-          throw new ServiceResponseException("Service response is more than 30 seconds old");
-        }
-        final byte[] serviceData = serviceResponse.getServiceData();
-        final ServiceType serviceType = serviceTypeRegistry.getServiceType(serviceTypeId);
-        decryptedPayload = serviceData;
-        if (EncryptOption.user == serviceType.encryptKey()) {
-          decryptedPayload = Utils.decryptJWE(serviceData, encryptionParams);
-        }
-        if (EncryptOption.device == serviceType.encryptKey()) {
-          decryptedPayload =
-              Utils.decryptJWEECDH(serviceData, encryptionParams.staticPrivateRecipientKey());
-        }
-        if (log.isDebugEnabled()) {
-          log.debug(
-              "Client received service response with valid signature:\n{}",
-              StaticResources.TIME_STAMP_SECONDS_MAPPER
-                  .writerWithDefaultPrettyPrinter()
-                  .writeValueAsString(serviceResponse));
-
-          log.debug(
-              "Service data in service response{}:\n{}",
-              EncryptOption.user == serviceType.encryptKey() ? " after decryption" : "",
-              Utils.prettyPrintByteArray(decryptedPayload));
-        }
-      } else {
-        errorResponse =
-            StaticResources.TIME_STAMP_SECONDS_MAPPER.readValue(responseData, ErrorResponse.class);
-        if (log.isDebugEnabled()) {
-          log.debug(
-              "Received error response with http status code: {}\n{}",
-              responseCode,
-              StaticResources.TIME_STAMP_SECONDS_MAPPER
-                  .writerWithDefaultPrettyPrinter()
-                  .writeValueAsString(errorResponse));
-        }
-      }
-      return new ServiceResult(
-          serviceResponse, decryptedPayload, errorResponse, success, responseCode);
-    } catch (IOException | ParseException | JOSEException e) {
-      throw new ServiceResponseException("Failed to parse service response", e);
-    }
   }
 
   private void verifyServiceResult(

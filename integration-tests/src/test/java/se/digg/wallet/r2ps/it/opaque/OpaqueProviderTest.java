@@ -43,7 +43,6 @@ import se.digg.wallet.r2ps.commons.dto.servicetype.SessionTaskRegistry;
 import se.digg.wallet.r2ps.commons.pake.ECUtils;
 import se.digg.wallet.r2ps.commons.pake.opaque.InMemoryPakeSessionRegistry;
 import se.digg.wallet.r2ps.commons.pake.opaque.PakeSessionRegistry;
-import se.digg.wallet.r2ps.commons.utils.ServiceExchangeFactory;
 import se.digg.wallet.r2ps.server.pake.opaque.ClientRecordRegistry;
 import se.digg.wallet.r2ps.server.pake.opaque.EvaluationResponseResult;
 import se.digg.wallet.r2ps.server.pake.opaque.ServerOpaqueEntity;
@@ -58,7 +57,6 @@ class OpaqueProviderTest {
   static ServerOpaqueProvider serverOpaqueProvider;
   static ServiceTypeRegistry serviceTypeRegistry;
   static ClientRecordRegistry clientRecordRegistry;
-  static ServiceExchangeFactory serviceExchangeFactory;
   static String clientIdentity;
   static String serverIdentity;
   static OpaqueClient opaqueClient;
@@ -82,7 +80,6 @@ class OpaqueProviderTest {
             new DstContext(DstContext.IDENTIFIER_P256_SHA256));
     OprfFunctions oprfP256 = new DefaultOprfFunction(p256Curve, sha256hash, "OPAQUE-POC");
     serviceTypeRegistry = new ServiceTypeRegistry();
-    serviceExchangeFactory = new ServiceExchangeFactory();
 
     opaqueClient = new DefaultOpaqueClient(oprfP256, hkdfKeyDerivation, sha256hash);
     opaqueServer = new DefaultOpaqueServer(oprfP256, hkdfKeyDerivation, sha256hash);

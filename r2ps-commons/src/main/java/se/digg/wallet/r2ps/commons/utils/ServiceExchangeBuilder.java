@@ -19,11 +19,11 @@ import se.digg.wallet.r2ps.commons.dto.payload.ExchangePayload;
 import se.digg.wallet.r2ps.commons.dto.servicetype.ServiceType;
 
 @Slf4j
-public class ServiceExchangeFactory {
+public class ServiceExchangeBuilder {
 
   private static final ObjectMapper mapper = StaticResources.SERVICE_EXCHANGE_OBJECT_MAPPER;
 
-  public String createServiceExchangeObject(
+  public static String build(
       ServiceType serviceType,
       ServiceExchange exchangeWrapper,
       ExchangePayload<?> exchangePayload,

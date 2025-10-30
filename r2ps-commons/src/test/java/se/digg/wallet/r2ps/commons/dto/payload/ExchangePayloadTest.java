@@ -42,7 +42,7 @@ import se.digg.wallet.r2ps.commons.dto.ServiceResponse;
 import se.digg.wallet.r2ps.commons.dto.servicetype.ServiceType;
 import se.digg.wallet.r2ps.commons.dto.servicetype.ServiceTypeRegistry;
 import se.digg.wallet.r2ps.commons.pake.ECUtils;
-import se.digg.wallet.r2ps.commons.utils.ServiceExchangeFactory;
+import se.digg.wallet.r2ps.commons.utils.ServiceExchangeBuilder;
 import se.digg.wallet.r2ps.commons.utils.Utils;
 import se.digg.wallet.r2ps.test.data.TestCredentials;
 
@@ -56,7 +56,6 @@ class ExchangePayloadTest {
   static OprfFunctions oprfP256;
   static KeyDerivationFunctions hkdfKeyDerivation;
   static ServiceTypeRegistry serviceTypeRegistry;
-  static ServiceExchangeFactory serviceExchangeFactory;
 
   @BeforeAll
   static void setUp() {
@@ -74,7 +73,6 @@ class ExchangePayloadTest {
             new DstContext(DstContext.IDENTIFIER_P256_SHA256));
     oprfP256 = new DefaultOprfFunction(p256Curve, sha256hash, "OPAQUE-POC");
     serviceTypeRegistry = new ServiceTypeRegistry();
-    serviceExchangeFactory = new ServiceExchangeFactory();
   }
 
   @Test
@@ -114,7 +112,7 @@ class ExchangePayloadTest {
             (ECPublicKey) TestCredentials.serverKeyPair.getPublic(), EncryptionMethod.A128GCM);
 
     final String serviceExchangeObject =
-        serviceExchangeFactory.createServiceExchangeObject(
+        ServiceExchangeBuilder.build(
             serviceTypeRegistry.getServiceType(ServiceType.AUTHENTICATE),
             request,
             payload,
@@ -136,7 +134,7 @@ class ExchangePayloadTest {
             (ECPublicKey) TestCredentials.p256keyPair.getPublic(), EncryptionMethod.A128GCM);
 
     final String serviceResponseExchange =
-        serviceExchangeFactory.createServiceExchangeObject(
+        ServiceExchangeBuilder.build(
             serviceTypeRegistry.getServiceType(ServiceType.AUTHENTICATE),
             serviceResponse,
             pakeResponsePayload,
