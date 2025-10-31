@@ -452,11 +452,23 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
           ServiceResponseException,
           PakeAuthenticationException,
           ServiceRequestException {
+
     final ServiceType serviceType = serviceTypeRegistry.getServiceType(serviceTypeId);
     if (EncryptOption.user != serviceType.encryptKey()) {
       throw new ServiceRequestException("This service type must use encrypted payload");
     }
-    return requestService(serviceType, payload, context, sessionId);
+
+    final ClientContextConfiguration clientContextConfiguration = contextInfoMap.get(context);
+    if (clientContextConfiguration == null) {
+      throw new PakeSessionException(String.format("The context %s is not available", context));
+    }
+
+    JweCodec jweCodec =
+        jweCodecFactory.forUserAuthentication(
+            opaqueProvider.getSessionRegistry().getPakeSession(sessionId));
+
+    return requestService(
+        serviceType, payload, context, sessionId, jweCodec, clientContextConfiguration);
   }
 
   @Override
@@ -466,12 +478,22 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
           ServiceResponseException,
           PakeAuthenticationException,
           ServiceRequestException {
+
     final ServiceType serviceType = serviceTypeRegistry.getServiceType(serviceTypeId);
     if (EncryptOption.device != serviceType.encryptKey()) {
       throw new ServiceRequestException(
           "This service type must use device authenticated encryption");
     }
-    return requestService(serviceType, payload, context, null);
+
+    final ClientContextConfiguration clientContextConfiguration = contextInfoMap.get(context);
+    if (clientContextConfiguration == null) {
+      throw new PakeSessionException(String.format("The context %s is not available", context));
+    }
+
+    JweCodec jweCodec = jweCodecFactory.forDeviceAuthentication(clientContextConfiguration);
+
+    return requestService(
+        serviceType, payload, context, null, jweCodec, clientContextConfiguration);
   }
 
   @Override
@@ -487,67 +509,50 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
       final ServiceType serviceType,
       final ExchangePayload<?> payload,
       final String context,
-      String sessionId)
-      throws PakeSessionException, ServiceResponseException, PakeAuthenticationException {
+      String pakeSessionId,
+      JweCodec jweCodec,
+      ClientContextConfiguration clientContextConfiguration)
+      throws ServiceResponseException, PakeAuthenticationException {
+
+    String nonce = Hex.toHexString(OpaqueUtils.random(32));
+    ServiceRequest serviceRequest =
+        ServiceRequest.builder()
+            .clientID(clientId)
+            .context(context)
+            .serviceType(serviceType.id())
+            .kid(clientContextConfiguration.getKid())
+            .nonce(nonce)
+            .pakeSessionId(pakeSessionId)
+            .build();
+
+    String serviceExchange;
     try {
-      if (!contextInfoMap.containsKey(context)) {
-        throw new PakeSessionException(String.format("The context %s is not available", context));
-      }
-      final ClientContextConfiguration clientContextConfiguration = contextInfoMap.get(context);
-      final EncryptOption encryptOption = serviceType.encryptKey();
-      String pakeSessionId = null;
-
-      JweCodec jweCodec = null;
-      if (encryptOption.equals(EncryptOption.user)) {
-        final ClientPakeRecord pakeSession =
-            opaqueProvider.getSessionRegistry().getPakeSession(sessionId);
-        if (pakeSession == null) {
-          throw new PakeSessionException(
-              String.format(
-                  "Failed to request service for context %s. No active session", context));
-        }
-        pakeSessionId = pakeSession.getPakeSessionId();
-
-        jweCodec = jweCodecFactory.forUserAuthentication(pakeSession);
-      } else { // EncryptOption.device
-        jweCodec = jweCodecFactory.forDeviceAuthentication(clientContextConfiguration);
-      }
-
-      String nonce = Hex.toHexString(OpaqueUtils.random(32));
-      ServiceRequest serviceRequest =
-          ServiceRequest.builder()
-              .clientID(clientId)
-              .context(context)
-              .serviceType(serviceType.id())
-              .kid(clientContextConfiguration.getKid())
-              .nonce(nonce)
-              .pakeSessionId(pakeSessionId)
-              .build();
-
-      final String serviceExchange =
+      serviceExchange =
           ServiceExchangeBuilder.build(
               serviceType,
               serviceRequest,
               payload,
               clientContextConfiguration.getSigningParams(),
               jweCodec.jweEncryptor());
-      final ServiceResult serviceResult =
-          ServiceResponseParser.parse(
-              connector.requestService(serviceExchange),
-              jweCodec.jweDecryptor(),
-              clientContextConfiguration,
-              serviceType.id(),
-              serviceTypeRegistry);
-      // If the service request was an error. Return the error response
-      if (!serviceResult.success()) {
-        return serviceResult;
-      }
-      // Verify the success service response
-      verifyServiceResultOld(serviceResult, serviceType.id(), nonce, context);
-      return serviceResult;
     } catch (JsonProcessingException | JOSEException e) {
       throw new PakeAuthenticationException("Failed to generate service request");
     }
+
+    final ServiceResult serviceResult =
+        ServiceResponseParser.parse(
+            connector.requestService(serviceExchange),
+            jweCodec.jweDecryptor(),
+            clientContextConfiguration,
+            serviceType.id(),
+            serviceTypeRegistry);
+
+    // If the service request was an error. Return the error response
+    if (!serviceResult.success()) {
+      return serviceResult;
+    }
+    // Verify the success service response
+    verifyServiceResult(serviceResult, nonce);
+    return serviceResult;
   }
 
   private PakeResponsePayload performPakeEvaluation(
