@@ -72,7 +72,7 @@ public interface R2PSClientApi {
    *         invalid
    */
   void registerPin(String pin, String context, byte[] authorization)
-      throws PakeSessionException, PakeAuthenticationException;
+      throws PakeSessionException, PakeAuthenticationException, ServiceResponseException;
 
   /**
    * Changes the personal identification number (PIN) associated with a specific context. This

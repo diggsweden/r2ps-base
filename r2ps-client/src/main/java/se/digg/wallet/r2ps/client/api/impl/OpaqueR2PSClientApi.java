@@ -137,7 +137,7 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
               clientContextConfiguration,
               ServiceType.AUTHENTICATE,
               serviceTypeRegistry);
-      verifyServiceResult(evaluateResult, ServiceType.AUTHENTICATE, nonce, context);
+      verifyServiceResultOld(evaluateResult, ServiceType.AUTHENTICATE, nonce, context);
       PakeResponsePayload evaluateResponsePayload =
           StaticResources.TIME_STAMP_SECONDS_MAPPER.readValue(
               evaluateResult.decryptedPayload(), PakeResponsePayload.class);
@@ -187,7 +187,7 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
               clientContextConfiguration,
               ServiceType.AUTHENTICATE,
               serviceTypeRegistry);
-      verifyServiceResult(finalizeResult, ServiceType.AUTHENTICATE, nonce, context);
+      verifyServiceResultOld(finalizeResult, ServiceType.AUTHENTICATE, nonce, context);
 
       PakeResponsePayload responsePayload =
           StaticResources.TIME_STAMP_SECONDS_MAPPER.readValue(
@@ -296,17 +296,77 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
 
   @Override
   public void registerPin(final String pin, final String context, final byte[] authorization)
-      throws PakeSessionException, PakeAuthenticationException {
-    try {
-      registerOrChangePin(pin, context, authorization, null);
-    } catch (InvalidInputException
-        | ServiceResponseException
-        | IOException
-        | DeriveKeyPairErrorException
-        | JOSEException
-        | DeserializationException e) {
-      throw new PakeAuthenticationException("Error registering PIN: " + e.getMessage(), e);
+      throws PakeSessionException, PakeAuthenticationException, ServiceResponseException {
+
+    if (authorization == null) {
+      throw new PakeSessionException("A PIN registration request MUST contain an authorization");
     }
+
+    final ClientContextConfiguration clientContextConfiguration = contextInfoMap.get(context);
+    if (clientContextConfiguration == null) {
+      throw new PakeSessionException(String.format("The context %s is not available", context));
+    }
+
+    JweCodec jweCodec = jweCodecFactory.forDeviceAuthentication(clientContextConfiguration);
+
+    final byte[] hPin = hardenPin(pin, clientContextConfiguration);
+
+    PinCredentialResponse pinCredentialResponse =
+        initiateRegisterPin(hPin, clientContextConfiguration, context, jweCodec);
+
+    completeRegisterPin(
+        hPin, pinCredentialResponse, clientContextConfiguration, context, authorization, jweCodec);
+
+    log.debug("PIN registration completed for context {}", context);
+  }
+
+  private PinCredentialResponse initiateRegisterPin(
+      byte[] hPin,
+      ClientContextConfiguration clientContextConfiguration,
+      String context,
+      JweCodec jweCodec)
+      throws PakeAuthenticationException, ServiceResponseException {
+
+    final RegistrationRequestResult registrationRequestBundle =
+        opaqueProvider.createRegistrationRequest(hPin);
+
+    PakeResponsePayload evaluateResponsePayload =
+        performPakeEvaluation(
+            context,
+            ServiceType.PIN_REGISTRATION,
+            registrationRequestBundle.registrationRequest().getEncoded(),
+            null,
+            clientContextConfiguration,
+            jweCodec);
+
+    return new PinCredentialResponse(
+        evaluateResponsePayload.getResponseData(), registrationRequestBundle.blind());
+  }
+
+  private void completeRegisterPin(
+      byte[] hPin,
+      PinCredentialResponse pinCredentialResponse,
+      ClientContextConfiguration clientContextConfiguration,
+      String context,
+      byte[] authorization,
+      JweCodec jweCodec)
+      throws PakeAuthenticationException, ServiceResponseException {
+
+    final RegistrationRecord registrationRecord =
+        opaqueProvider.finalizeRegistrationRequest(
+            hPin,
+            pinCredentialResponse.blind(),
+            pinCredentialResponse.responseData(),
+            clientContextConfiguration.getServerIdentity());
+
+    performPakeFinalization(
+        context,
+        ServiceType.PIN_REGISTRATION,
+        registrationRecord.getEncoded(),
+        null,
+        clientContextConfiguration,
+        authorization,
+        jweCodec);
   }
 
   private void registerOrChangePin(
@@ -389,7 +449,7 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
             clientContextConfiguration,
             serviceTypeId,
             serviceTypeRegistry);
-    verifyServiceResult(
+    verifyServiceResultOld(
         registrationEvaluateResult,
         initialRegistration ? ServiceType.PIN_REGISTRATION : ServiceType.PIN_CHANGE,
         nonce,
@@ -430,7 +490,7 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
             clientContextConfiguration,
             serviceTypeId,
             serviceTypeRegistry);
-    verifyServiceResult(
+    verifyServiceResultOld(
         registrationFinalizeResult,
         initialRegistration ? ServiceType.PIN_REGISTRATION : ServiceType.PIN_CHANGE,
         nonce,
@@ -488,10 +548,7 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
       final ExchangePayload<?> payload,
       final String context,
       String sessionId)
-      throws PakeSessionException,
-      ServiceResponseException,
-      PakeAuthenticationException,
-      ServiceRequestException {
+      throws PakeSessionException, ServiceResponseException, PakeAuthenticationException {
     try {
       if (!contextInfoMap.containsKey(context)) {
         throw new PakeSessionException(String.format("The context %s is not available", context));
@@ -546,14 +603,138 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
         return serviceResult;
       }
       // Verify the success service response
-      verifyServiceResult(serviceResult, serviceType.id(), nonce, context);
+      verifyServiceResultOld(serviceResult, serviceType.id(), nonce, context);
       return serviceResult;
     } catch (JsonProcessingException | JOSEException e) {
       throw new PakeAuthenticationException("Failed to generate service request");
     }
   }
 
-  private void verifyServiceResult(
+  private PakeResponsePayload performPakeEvaluation(
+      final String context,
+      final String serviceTypeId,
+      final byte[] requestData,
+      final String pakeSessionId,
+      ClientContextConfiguration clientContextConfiguration,
+      JweCodec jweCodec)
+      throws ServiceResponseException, PakeAuthenticationException {
+
+    String nonce = Hex.toHexString(OpaqueUtils.random(32));
+
+    PakeRequestPayload pakeEvaluatePayload =
+        PakeRequestPayload.builder()
+            .protocol(PakeProtocol.opaque)
+            .state(evaluate)
+            .requestData(requestData)
+            .build();
+
+    final ServiceRequest pakeRequestWrapper =
+        ServiceRequest.builder()
+            .clientID(clientId)
+            .kid(clientContextConfiguration.getKid())
+            .context(context)
+            .serviceType(serviceTypeId)
+            .nonce(nonce)
+            .pakeSessionId(pakeSessionId)
+            .build();
+
+    return sendRequest(
+        context,
+        serviceTypeId,
+        clientContextConfiguration,
+        jweCodec,
+        nonce,
+        pakeEvaluatePayload,
+        pakeRequestWrapper);
+  }
+
+  private PakeResponsePayload performPakeFinalization(
+      final String context,
+      final String serviceTypeId,
+      final byte[] requestData,
+      final String pakeSessionId,
+      ClientContextConfiguration clientContextConfiguration,
+      byte[] authorization,
+      JweCodec jweCodec)
+      throws ServiceResponseException, PakeAuthenticationException {
+
+    String nonce = Hex.toHexString(OpaqueUtils.random(32));
+
+    PakeRequestPayload pakeFinalizePayload =
+        PakeRequestPayload.builder()
+            .protocol(PakeProtocol.opaque)
+            .state(finalize)
+            .requestData(requestData)
+            .authorization(authorization)
+            .build();
+
+    ServiceRequest pakeRequestWrapper =
+        ServiceRequest.builder()
+            .clientID(clientId)
+            .kid(clientContextConfiguration.getKid())
+            .context(context)
+            .serviceType(serviceTypeId)
+            .nonce(nonce)
+            .pakeSessionId(pakeSessionId)
+            .build();
+
+    return sendRequest(
+        context,
+        serviceTypeId,
+        clientContextConfiguration,
+        jweCodec,
+        nonce,
+        pakeFinalizePayload,
+        pakeRequestWrapper);
+  }
+
+  private PakeResponsePayload sendRequest(
+      String context,
+      String serviceTypeId,
+      ClientContextConfiguration clientContextConfiguration,
+      JweCodec jweCodec,
+      String nonce,
+      PakeRequestPayload pakeEvaluatePayload,
+      ServiceRequest pakeRequestWrapper)
+      throws ServiceResponseException, PakeAuthenticationException {
+    try {
+      final String request =
+          ServiceExchangeBuilder.build(
+              serviceTypeRegistry.getServiceType(serviceTypeId),
+              pakeRequestWrapper,
+              pakeEvaluatePayload,
+              clientContextConfiguration.getSigningParams(),
+              jweCodec.jweEncryptor());
+
+      final ServiceResult result =
+          ServiceResponseParser.parse(
+              connector.requestService(request),
+              jweCodec.jweDecryptor(),
+              clientContextConfiguration,
+              serviceTypeId,
+              serviceTypeRegistry);
+
+      if (result.success()) {
+        verifyServiceResult(result, nonce);
+      } else {
+        throw new ServiceResponseException(
+            String.format(
+                "Service request of type '%s' under context '%s' failed with http code %d, error code %s and error message: %s",
+                serviceTypeId,
+                context,
+                result.httpStatusCode(),
+                result.errorResponse().getErrorCode(),
+                result.errorResponse().getMessage()));
+      }
+
+      return StaticResources.TIME_STAMP_SECONDS_MAPPER.readValue(
+          result.decryptedPayload(), PakeResponsePayload.class);
+    } catch (IOException | JOSEException e) {
+      throw new PakeAuthenticationException("Failed to create session: " + e.getMessage(), e);
+    }
+  }
+
+  private void verifyServiceResultOld(
       final ServiceResult result,
       final String serviceType,
       final String nonce,
@@ -583,6 +764,30 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
     if (Instant.now().isBefore(responseIat.minusSeconds(30))) {
       throw new ServiceResponseException("Response is more than 30 seconds old");
     }
+    if (serviceResponse.getServiceData() == null) {
+      throw new ServiceResponseException("Service data is null");
+    }
+  }
+
+  private void verifyServiceResult(final ServiceResult result, final String nonce)
+      throws ServiceResponseException {
+
+    final ServiceResponse serviceResponse = result.serviceResponse();
+
+    final String responseNonce = serviceResponse.getNonce();
+    if (!nonce.equals(responseNonce)) {
+      throw new ServiceResponseException(
+          String.format("Response nonce mismatch. Expected %s, received %s", nonce, responseNonce));
+    }
+
+    final Instant responseIat = serviceResponse.getIat();
+    if (Instant.now().isAfter(responseIat.plusSeconds(10))) {
+      throw new ServiceResponseException("Response is issued after 10 seconds from now");
+    }
+    if (Instant.now().isBefore(responseIat.minusSeconds(30))) {
+      throw new ServiceResponseException("Response is more than 30 seconds old");
+    }
+
     if (serviceResponse.getServiceData() == null) {
       throw new ServiceResponseException("Service data is null");
     }
