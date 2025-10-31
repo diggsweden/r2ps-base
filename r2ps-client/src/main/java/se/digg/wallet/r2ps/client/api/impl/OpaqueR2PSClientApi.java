@@ -22,8 +22,6 @@ import se.digg.crypto.opaque.dto.KE1;
 import se.digg.crypto.opaque.dto.KE3;
 import se.digg.crypto.opaque.dto.RegistrationRecord;
 import se.digg.crypto.opaque.error.DeriveKeyPairErrorException;
-import se.digg.crypto.opaque.error.DeserializationException;
-import se.digg.crypto.opaque.error.InvalidInputException;
 import se.digg.wallet.r2ps.client.api.ClientContextConfiguration;
 import se.digg.wallet.r2ps.client.api.R2PSClientApi;
 import se.digg.wallet.r2ps.client.api.ServiceExchangeConnector;
@@ -281,20 +279,6 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
   }
 
   @Override
-  public void changePin(final String pin, final String context, final String oldPin)
-      throws PakeSessionException, PakeAuthenticationException, ServiceResponseException {
-    try {
-      registerOrChangePin(pin, context, null, oldPin);
-    } catch (InvalidInputException
-        | IOException
-        | DeriveKeyPairErrorException
-        | JOSEException
-        | DeserializationException e) {
-      throw new PakeAuthenticationException("Error changing PIN: " + e.getMessage(), e);
-    }
-  }
-
-  @Override
   public void registerPin(final String pin, final String context, final byte[] authorization)
       throws PakeSessionException, PakeAuthenticationException, ServiceResponseException {
 
@@ -369,137 +353,93 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
         jweCodec);
   }
 
-  private void registerOrChangePin(
-      final String pin, String context, final byte[] authorization, final String oldPin)
-      throws PakeSessionException,
-      InvalidInputException,
-      ServiceResponseException,
-      IOException,
-      DeriveKeyPairErrorException,
-      JOSEException,
-      DeserializationException,
-      PakeAuthenticationException {
-    if (!contextInfoMap.containsKey(context)) {
-      throw new PakeSessionException(String.format("The context %s is not available", context));
+  @Override
+  public void changePin(final String pin, final String context, final String oldPin)
+      throws PakeSessionException, PakeAuthenticationException, ServiceResponseException {
+    if (oldPin == null) {
+      throw new PakeSessionException("A PIN change request MUST contain an old PIN");
     }
-    if (authorization == null && oldPin == null) {
-      throw new PakeSessionException(
-          "A PIN registration request MUST contain either an authorization or an old PIN");
-    }
-    if (authorization != null && oldPin != null) {
-      throw new PakeSessionException(
-          "A PIN registration request must not contain both an authorization and an old PIN");
-    }
-    boolean initialRegistration = authorization != null;
-    log.debug("Performing PIN registration with initial registration: {}", initialRegistration);
-    String pakeSessionId = null;
-    if (!initialRegistration) {
-      // Re-authenticate with the old, still valid PIN
-      log.debug(
-          "Deleting old session for context {} in order to create a new session with old PIN",
-          context);
-      this.deleteContextSessions(context);
-      pakeSessionId = this.createSession(oldPin, context).getPakeSessionId();
-      log.debug("Created new session for context {} with old PIN", context);
-    }
+    log.debug("Performing PIN change");
 
     final ClientContextConfiguration clientContextConfiguration = contextInfoMap.get(context);
-    final byte[] hPin = hardenPin(pin, clientContextConfiguration);
-    String nonce = Hex.toHexString(OpaqueUtils.random(32));
-    final RegistrationRequestResult registrationRequestBundle =
-        opaqueProvider.createRegistrationRequest(hPin);
-    PakeRequestPayload registrationEvaluatePayload =
-        PakeRequestPayload.builder()
-            .protocol(PakeProtocol.opaque)
-            .state(evaluate)
-            .requestData(registrationRequestBundle.registrationRequest().getEncoded())
-            .build();
-    String serviceTypeId =
-        initialRegistration ? ServiceType.PIN_REGISTRATION : ServiceType.PIN_CHANGE;
-    final ServiceRequest pakeRequestWrapper =
-        ServiceRequest.builder()
-            .clientID(clientId)
-            .kid(clientContextConfiguration.getKid())
-            .pakeSessionId(pakeSessionId) // Will be null on initial registration
-            .context(context)
-            .serviceType(serviceTypeId)
-            .nonce(nonce)
-            .build();
-
-    JweCodec jweCodec;
-    if (initialRegistration) {
-      jweCodec = jweCodecFactory.forDeviceAuthentication(clientContextConfiguration);
-    } else {
-      jweCodec =
-          jweCodecFactory.forUserAuthentication(
-              opaqueProvider.getSessionRegistry().getPakeSession(pakeSessionId));
+    if (clientContextConfiguration == null) {
+      throw new PakeSessionException(String.format("The context %s is not available", context));
     }
 
-    final String registrationEvaluateRequest =
-        ServiceExchangeBuilder.build(
-            serviceTypeRegistry.getServiceType(serviceTypeId),
-            pakeRequestWrapper,
-            registrationEvaluatePayload,
-            clientContextConfiguration.getSigningParams(),
-            jweCodec.jweEncryptor());
-    final ServiceResult registrationEvaluateResult =
-        ServiceResponseParser.parse(
-            connector.requestService(registrationEvaluateRequest),
-            jweCodec.jweDecryptor(),
-            clientContextConfiguration,
-            serviceTypeId,
-            serviceTypeRegistry);
-    verifyServiceResultOld(
-        registrationEvaluateResult,
-        initialRegistration ? ServiceType.PIN_REGISTRATION : ServiceType.PIN_CHANGE,
-        nonce,
+    // Re-authenticate with the old, still valid PIN
+    log.debug(
+        "Deleting old session for context {} in order to create a new session with old PIN",
         context);
-    PakeResponsePayload registrationEvaluateResponsePayload =
-        StaticResources.TIME_STAMP_SECONDS_MAPPER.readValue(
-            registrationEvaluateResult.decryptedPayload(), PakeResponsePayload.class);
-    final byte[] pakeRegistrationResponse = registrationEvaluateResponsePayload.getResponseData();
+    deleteContextSessions(context);
+    String pakeSessionId = createSession(oldPin, context).getPakeSessionId();
+    log.debug("Created new session for context {} with old PIN", context);
 
-    nonce = Hex.toHexString(OpaqueUtils.random(32));
+    JweCodec jweCodec =
+        jweCodecFactory.forUserAuthentication(
+            opaqueProvider.getSessionRegistry().getPakeSession(pakeSessionId));
+
+    final byte[] hPin = hardenPin(pin, clientContextConfiguration);
+
+    PinCredentialResponse pinCredentialResponse =
+        initiateChangePin(hPin, clientContextConfiguration, context, jweCodec, pakeSessionId);
+
+    completeChangePin(
+        hPin, pinCredentialResponse, clientContextConfiguration, context, pakeSessionId, jweCodec);
+
+    log.debug("PIN change completed for context {}", context);
+
+    // Removing all protected sessions for this context that has been created under the old PIN
+    deleteContextSessions(context);
+  }
+
+  private PinCredentialResponse initiateChangePin(
+      byte[] hPin,
+      ClientContextConfiguration clientContextConfiguration,
+      String context,
+      JweCodec jweCodec,
+      String pakeSessionId)
+      throws PakeAuthenticationException, ServiceResponseException {
+
+    final RegistrationRequestResult registrationRequestBundle =
+        opaqueProvider.createRegistrationRequest(hPin);
+
+    PakeResponsePayload evaluateResponsePayload =
+        performPakeEvaluation(
+            context,
+            ServiceType.PIN_CHANGE,
+            registrationRequestBundle.registrationRequest().getEncoded(),
+            pakeSessionId,
+            clientContextConfiguration,
+            jweCodec);
+
+    return new PinCredentialResponse(
+        evaluateResponsePayload.getResponseData(), registrationRequestBundle.blind());
+  }
+
+  private void completeChangePin(
+      byte[] hPin,
+      PinCredentialResponse pinCredentialResponse,
+      ClientContextConfiguration clientContextConfiguration,
+      String context,
+      String pakeSessionId,
+      JweCodec jweCodec)
+      throws PakeAuthenticationException, ServiceResponseException {
+
     final RegistrationRecord registrationRecord =
         opaqueProvider.finalizeRegistrationRequest(
             hPin,
-            registrationRequestBundle.blind(),
-            pakeRegistrationResponse,
+            pinCredentialResponse.blind(),
+            pinCredentialResponse.responseData(),
             clientContextConfiguration.getServerIdentity());
-    PakeRequestPayload registrationFinalizePayload =
-        PakeRequestPayload.builder()
-            .protocol(PakeProtocol.opaque)
-            .state(finalize)
-            .authorization(authorization) // Will always be null on PIN change
-            .requestData(registrationRecord.getEncoded())
-            .build();
-    pakeRequestWrapper.setNonce(nonce);
-    pakeRequestWrapper.setServiceData(null);
 
-    final String registrationFinalizeRequest =
-        ServiceExchangeBuilder.build(
-            serviceTypeRegistry.getServiceType(serviceTypeId),
-            pakeRequestWrapper,
-            registrationFinalizePayload,
-            clientContextConfiguration.getSigningParams(),
-            jweCodec.jweEncryptor());
-    final ServiceResult registrationFinalizeResult =
-        ServiceResponseParser.parse(
-            connector.requestService(registrationFinalizeRequest),
-            jweCodec.jweDecryptor(),
-            clientContextConfiguration,
-            serviceTypeId,
-            serviceTypeRegistry);
-    verifyServiceResultOld(
-        registrationFinalizeResult,
-        initialRegistration ? ServiceType.PIN_REGISTRATION : ServiceType.PIN_CHANGE,
-        nonce,
-        context);
-    log.debug("PIN registration completed for context {}", context);
-    if (!initialRegistration) {
-      // Removing all protected sessions for this context that has been created under the old PIN
-      this.deleteContextSessions(context);
-    }
+    performPakeFinalization(
+        context,
+        ServiceType.PIN_CHANGE,
+        registrationRecord.getEncoded(),
+        pakeSessionId,
+        clientContextConfiguration,
+        null,
+        jweCodec);
   }
 
   @Override
@@ -509,9 +449,9 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
       final String context,
       final String sessionId)
       throws PakeSessionException,
-      ServiceResponseException,
-      PakeAuthenticationException,
-      ServiceRequestException {
+          ServiceResponseException,
+          PakeAuthenticationException,
+          ServiceRequestException {
     final ServiceType serviceType = serviceTypeRegistry.getServiceType(serviceTypeId);
     if (EncryptOption.user != serviceType.encryptKey()) {
       throw new ServiceRequestException("This service type must use encrypted payload");
@@ -523,9 +463,9 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
   public ServiceResult deviceAuthenticatedService(
       final String serviceTypeId, final ExchangePayload<?> payload, final String context)
       throws PakeSessionException,
-      ServiceResponseException,
-      PakeAuthenticationException,
-      ServiceRequestException {
+          ServiceResponseException,
+          PakeAuthenticationException,
+          ServiceRequestException {
     final ServiceType serviceType = serviceTypeRegistry.getServiceType(serviceTypeId);
     if (EncryptOption.device != serviceType.encryptKey()) {
       throw new ServiceRequestException(
@@ -537,9 +477,9 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
   @Override
   public ServiceResult deviceAuthenticatedService(final String serviceType, final String context)
       throws PakeSessionException,
-      ServiceResponseException,
-      PakeAuthenticationException,
-      ServiceRequestException {
+          ServiceResponseException,
+          PakeAuthenticationException,
+          ServiceRequestException {
     return deviceAuthenticatedService(serviceType, new NullPayload(), context);
   }
 
