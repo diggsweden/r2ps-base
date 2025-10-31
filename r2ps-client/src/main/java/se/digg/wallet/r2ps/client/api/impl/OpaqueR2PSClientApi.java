@@ -21,7 +21,6 @@ import se.digg.crypto.opaque.client.RegistrationRequestResult;
 import se.digg.crypto.opaque.dto.KE1;
 import se.digg.crypto.opaque.dto.KE3;
 import se.digg.crypto.opaque.dto.RegistrationRecord;
-import se.digg.crypto.opaque.error.DeriveKeyPairErrorException;
 import se.digg.wallet.r2ps.client.api.ClientContextConfiguration;
 import se.digg.wallet.r2ps.client.api.R2PSClientApi;
 import se.digg.wallet.r2ps.client.api.ServiceExchangeConnector;
@@ -94,130 +93,101 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
   public PakeResponsePayload createSession(
       final String pin, final String context, String task, Duration requestedDuration)
       throws PakeSessionException, ServiceResponseException, PakeAuthenticationException {
-    String pakeSessionId = null;
+    log.debug("Creating session for context {}", context);
+
+    final ClientContextConfiguration clientContextConfiguration = contextInfoMap.get(context);
+    if (clientContextConfiguration == null) {
+      throw new PakeSessionException(String.format("The context %s is not available", context));
+    }
+
+    JweCodec jweCodec = jweCodecFactory.forDeviceAuthentication(clientContextConfiguration);
+
+    AuthenticationCredentialResponse evaluateResponse =
+        initiateAuthentication(pin, clientContextConfiguration, context, jweCodec);
+    String pakeSessionId = evaluateResponse.pakeSessionId();
+
     try {
-      log.debug("Creating session for context {}", context);
-      if (!contextInfoMap.containsKey(context)) {
-        throw new PakeSessionException(String.format("The context %s is not available", context));
-      }
-      final ClientContextConfiguration clientContextConfiguration = contextInfoMap.get(context);
-      JweCodec jweCodec = jweCodecFactory.forDeviceAuthentication(clientContextConfiguration);
-
-      final byte[] hPin = hardenPin(pin, clientContextConfiguration);
-      ClientState clientState = new ClientState();
-      String nonce = Hex.toHexString(OpaqueUtils.random(32));
-      final KE1 ke1 = opaqueProvider.authenticationEvaluate(hPin, clientState);
-      PakeRequestPayload pakeEvaluatePayload =
-          PakeRequestPayload.builder()
-              .protocol(PakeProtocol.opaque)
-              .state(evaluate)
-              .requestData(ke1.getEncoded())
-              .build();
-      final ServiceRequest pakeRequestWrapper =
-          ServiceRequest.builder()
-              .clientID(clientId)
-              .kid(clientContextConfiguration.getKid())
-              .context(context)
-              .serviceType(ServiceType.AUTHENTICATE)
-              .nonce(nonce)
-              .build();
-      final String pakeEvaluateRequest =
-          ServiceExchangeBuilder.build(
-              serviceTypeRegistry.getServiceType(ServiceType.AUTHENTICATE),
-              pakeRequestWrapper,
-              pakeEvaluatePayload,
-              clientContextConfiguration.getSigningParams(),
-              jweCodec.jweEncryptor());
-      final ServiceResult evaluateResult =
-          ServiceResponseParser.parse(
-              connector.requestService(pakeEvaluateRequest),
-              jweCodec.jweDecryptor(),
-              clientContextConfiguration,
-              ServiceType.AUTHENTICATE,
-              serviceTypeRegistry);
-      verifyServiceResultOld(evaluateResult, ServiceType.AUTHENTICATE, nonce, context);
-      PakeResponsePayload evaluateResponsePayload =
-          StaticResources.TIME_STAMP_SECONDS_MAPPER.readValue(
-              evaluateResult.decryptedPayload(), PakeResponsePayload.class);
-      pakeSessionId = evaluateResponsePayload.getPakeSessionId();
-      final byte[] ke2 = evaluateResponsePayload.getResponseData();
-      final KE3 ke3;
-      try {
-        ke3 =
-            opaqueProvider.authenticationFinalize(
-                ke2,
-                pakeSessionId,
-                context,
-                clientContextConfiguration.getKid(),
-                clientState,
-                clientContextConfiguration.getServerIdentity(),
-                task);
-      } catch (Exception e) {
-        throw new PakeAuthenticationException(
-            String.format(
-                "Authentication failed with the presented PIN and client key: %s", e.getMessage()),
-            e);
-      }
-
-      nonce = Hex.toHexString(OpaqueUtils.random(32));
-      PakeRequestPayload pakeFinalizePayload =
-          PakeRequestPayload.builder()
-              .protocol(PakeProtocol.opaque)
-              .state(finalize)
-              .task(task)
-              .sessionDuration(requestedDuration)
-              .requestData(ke3.getEncoded())
-              .build();
-      pakeRequestWrapper.setPakeSessionId(pakeSessionId);
-      pakeRequestWrapper.setNonce(nonce);
-      pakeRequestWrapper.setServiceData(null);
-      final String pakeFinalizeRequest =
-          ServiceExchangeBuilder.build(
-              serviceTypeRegistry.getServiceType(ServiceType.AUTHENTICATE),
-              pakeRequestWrapper,
-              pakeFinalizePayload,
-              clientContextConfiguration.getSigningParams(),
-              jweCodec.jweEncryptor());
-      final ServiceResult finalizeResult =
-          ServiceResponseParser.parse(
-              connector.requestService(pakeFinalizeRequest),
-              jweCodec.jweDecryptor(),
-              clientContextConfiguration,
-              ServiceType.AUTHENTICATE,
-              serviceTypeRegistry);
-      verifyServiceResultOld(finalizeResult, ServiceType.AUTHENTICATE, nonce, context);
-
-      PakeResponsePayload responsePayload =
-          StaticResources.TIME_STAMP_SECONDS_MAPPER.readValue(
-              finalizeResult.decryptedPayload(), PakeResponsePayload.class);
-      log.debug("Created session for context {} with sessionID {}", context, pakeSessionId);
-      // Update the session expiration time in the registry with the expiration time from the server
-      // and add task.
-      final Instant sessionExpirationTime = responsePayload.getSessionExpirationTime();
-      if (sessionExpirationTime == null) {
-        log.debug("No session expiration time from server. Abort session");
-        opaqueProvider.getSessionRegistry().deletePakeSession(pakeSessionId);
-        throw new PakeSessionException("No session expiration time from server. Abort session");
-      }
-      // Update the session registry
-      final ClientPakeRecord pakeSession =
-          opaqueProvider.getSessionRegistry().getPakeSession(pakeSessionId);
-      pakeSession.setExpirationTime(sessionExpirationTime);
-      pakeSession.setSessionTaskId(responsePayload.getTask());
-      opaqueProvider.getSessionRegistry().updatePakeSession(pakeSession);
-
-      return responsePayload;
-    } catch (PakeSessionException | ServiceResponseException | PakeAuthenticationException e) {
+      return completeAuthentication(
+          evaluateResponse, context, clientContextConfiguration, jweCodec, task, requestedDuration);
+    } catch (ServiceResponseException | PakeSessionException | PakeAuthenticationException e) {
       if (pakeSessionId != null) {
         opaqueProvider.getSessionRegistry().deletePakeSession(pakeSessionId);
       }
       throw e;
-    } catch (IOException | DeriveKeyPairErrorException | JOSEException e) {
-      if (pakeSessionId != null) {
-        opaqueProvider.getSessionRegistry().deletePakeSession(pakeSessionId);
-      }
-      throw new PakeAuthenticationException("Failed to create session: " + e.getMessage(), e);
     }
+  }
+
+  private AuthenticationCredentialResponse initiateAuthentication(
+      String pin,
+      ClientContextConfiguration clientContextConfiguration,
+      String context,
+      JweCodec jweCodec)
+      throws PakeAuthenticationException, ServiceResponseException {
+
+    final byte[] hPin = hardenPin(pin, clientContextConfiguration);
+    ClientState clientState = new ClientState();
+    final KE1 ke1 = opaqueProvider.authenticationEvaluate(hPin, clientState);
+
+    PakeResponsePayload response =
+        performPakeEvaluation(
+            context,
+            ServiceType.AUTHENTICATE,
+            ke1.getEncoded(),
+            null,
+            clientContextConfiguration,
+            jweCodec);
+
+    return new AuthenticationCredentialResponse(
+        response.getPakeSessionId(), response.getResponseData(), clientState);
+  }
+
+  private PakeResponsePayload completeAuthentication(
+      AuthenticationCredentialResponse evaluateResponse,
+      String context,
+      ClientContextConfiguration clientContextConfiguration,
+      JweCodec jweCodec,
+      String task,
+      Duration requestedDuration)
+      throws PakeAuthenticationException, ServiceResponseException, PakeSessionException {
+
+    byte[] ke2 = evaluateResponse.responseData();
+    String pakeSessionId = evaluateResponse.pakeSessionId();
+
+    KE3 ke3 =
+        opaqueProvider.authenticationFinalize(
+            ke2,
+            pakeSessionId,
+            context,
+            clientContextConfiguration.getKid(),
+            evaluateResponse.clientState(),
+            clientContextConfiguration.getServerIdentity(),
+            task);
+
+    PakeResponsePayload finalizeResponsePayload =
+        performPakeFinalization(
+            context,
+            ServiceType.AUTHENTICATE,
+            ke3.getEncoded(),
+            pakeSessionId,
+            clientContextConfiguration,
+            null,
+            jweCodec,
+            task,
+            requestedDuration);
+
+    log.debug("Created session for context {} with sessionID {}", context, pakeSessionId);
+
+    if (finalizeResponsePayload.getSessionExpirationTime() == null) {
+      throw new PakeSessionException("No session expiration time from server. Abort session");
+    }
+
+    ClientPakeRecord pakeSession =
+        opaqueProvider.getSessionRegistry().getPakeSession(pakeSessionId);
+    pakeSession.setExpirationTime(finalizeResponsePayload.getSessionExpirationTime());
+    pakeSession.setSessionTaskId(finalizeResponsePayload.getTask());
+    opaqueProvider.getSessionRegistry().updatePakeSession(pakeSession);
+
+    return finalizeResponsePayload;
   }
 
   @Override
@@ -350,7 +320,9 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
         null,
         clientContextConfiguration,
         authorization,
-        jweCodec);
+        jweCodec,
+        null,
+        null);
   }
 
   @Override
@@ -439,7 +411,9 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
         pakeSessionId,
         clientContextConfiguration,
         null,
-        jweCodec);
+        jweCodec,
+        null,
+        null);
   }
 
   @Override
@@ -600,7 +574,9 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
       final String pakeSessionId,
       ClientContextConfiguration clientContextConfiguration,
       byte[] authorization,
-      JweCodec jweCodec)
+      JweCodec jweCodec,
+      String task,
+      Duration sessionDuration)
       throws ServiceResponseException, PakeAuthenticationException {
 
     String nonce = Hex.toHexString(OpaqueUtils.random(32));
@@ -609,6 +585,8 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
         PakeRequestPayload.builder()
             .protocol(PakeProtocol.opaque)
             .state(finalize)
+            .sessionDuration(sessionDuration)
+            .task(task)
             .requestData(requestData)
             .authorization(authorization)
             .build();
@@ -676,41 +654,6 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
           result.decryptedPayload(), PakeResponsePayload.class);
     } catch (IOException | JOSEException e) {
       throw new PakeAuthenticationException("Failed to create session: " + e.getMessage(), e);
-    }
-  }
-
-  private void verifyServiceResultOld(
-      final ServiceResult result,
-      final String serviceType,
-      final String nonce,
-      final String context)
-      throws ServiceResponseException {
-    if (!result.success()) {
-      throw new ServiceResponseException(
-          String.format(
-              "Service request of type '%s' under context '%s' failed with http code %d, error "
-                  + "code %s and error message: %s",
-              serviceType,
-              context,
-              result.httpStatusCode(),
-              result.errorResponse().getErrorCode(),
-              result.errorResponse().getMessage()));
-    }
-    final ServiceResponse serviceResponse = result.serviceResponse();
-    final String responseNonce = serviceResponse.getNonce();
-    if (!nonce.equals(responseNonce)) {
-      throw new ServiceResponseException(
-          String.format("Response nonce mismatch. Expected %s, received %s", nonce, responseNonce));
-    }
-    final Instant responseIat = serviceResponse.getIat();
-    if (Instant.now().isAfter(responseIat.plusSeconds(10))) {
-      throw new ServiceResponseException("Response is issued after 10 seconds from now");
-    }
-    if (Instant.now().isBefore(responseIat.minusSeconds(30))) {
-      throw new ServiceResponseException("Response is more than 30 seconds old");
-    }
-    if (serviceResponse.getServiceData() == null) {
-      throw new ServiceResponseException("Service data is null");
     }
   }
 
