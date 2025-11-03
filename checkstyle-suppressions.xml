@@ -11,4 +11,8 @@
   <suppress checks="LocalVariableName" files="ECUtils\.java" />
   <!-- Suppressing JavadocParagraph for <p> tag formatting -->
   <suppress checks="JavadocParagraph" />
+  <!-- Suppressing LineLength for complex generic type declaration -->
+  <suppress checks="LineLength" files="ServiceExchange\.java" lines="35" />
+  <!-- Suppressing Indentation for switch expression arrow formatting -->
+  <suppress checks="Indentation" files="SessionServiceHandler\.java" lines="59" />
 </suppressions>
