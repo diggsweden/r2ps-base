@@ -9,4 +9,6 @@
   <suppress checks="AbbreviationAsWordInName" />
   <!-- Suppressing LocalVariableName for cryptographic variable names like rBytes, sBytes -->
   <suppress checks="LocalVariableName" files="ECUtils\.java" />
+  <!-- Suppressing JavadocParagraph for <p> tag formatting -->
+  <suppress checks="JavadocParagraph" />
 </suppressions>

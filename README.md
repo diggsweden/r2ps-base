@@ -12,10 +12,9 @@ The library is divided into 3 modules:
 
 This code is included in projects by the following maven dependencies
 
-
 ### Client
 
-```
+```text
     <dependency>
       <groupId>se.digg.wallet</groupId>
       <artifactId>r2ps-client</artifactId>
@@ -25,7 +24,7 @@ This code is included in projects by the following maven dependencies
 
 ### Server
 
-```
+```text
     <dependency>
       <groupId>se.digg.wallet</groupId>
       <artifactId>r2ps-server</artifactId>
@@ -35,11 +34,10 @@ This code is included in projects by the following maven dependencies
 
 ### Commons
 
-```
+```text
     <dependency>
       <groupId>se.digg.wallet</groupId>
       <artifactId>r2ps-commons</artifactId>
       <version>${project.version}</version>
     </dependency>
 ```
-
