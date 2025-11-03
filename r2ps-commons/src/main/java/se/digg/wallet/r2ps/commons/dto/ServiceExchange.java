@@ -32,8 +32,7 @@ public abstract class ServiceExchange {
     this.version = "1.0";
   }
 
-  public abstract static class AbstractBuilder<
-      T extends ServiceExchange, B extends AbstractBuilder<?, ?>> {
+  public abstract static class AbstractBuilder<T extends ServiceExchange, B extends AbstractBuilder<?, ?>> {
     protected T serviceExchange;
 
     public AbstractBuilder(final T serviceExchange) {

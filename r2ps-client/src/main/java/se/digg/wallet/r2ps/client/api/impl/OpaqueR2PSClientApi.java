@@ -67,7 +67,8 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
 
   private final PinHardening pinHardening;
 
-  @Setter private EncryptionMethod encryptionMethod = EncryptionMethod.A256GCM;
+  @Setter
+  private EncryptionMethod encryptionMethod = EncryptionMethod.A256GCM;
 
   public OpaqueR2PSClientApi(OpaqueR2PSConfiguration configuration) {
     this.clientId = configuration.getClientIdentity();
@@ -311,13 +312,13 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
   private void registerOrChangePin(
       final String pin, String context, final byte[] authorization, final String oldPin)
       throws PakeSessionException,
-          InvalidInputException,
-          ServiceResponseException,
-          IOException,
-          DeriveKeyPairErrorException,
-          JOSEException,
-          DeserializationException,
-          PakeAuthenticationException {
+      InvalidInputException,
+      ServiceResponseException,
+      IOException,
+      DeriveKeyPairErrorException,
+      JOSEException,
+      DeserializationException,
+      PakeAuthenticationException {
     if (!contextInfoMap.containsKey(context)) {
       throw new PakeSessionException(String.format("The context %s is not available", context));
     }
@@ -448,9 +449,9 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
       final String context,
       final String sessionId)
       throws PakeSessionException,
-          ServiceResponseException,
-          PakeAuthenticationException,
-          ServiceRequestException {
+      ServiceResponseException,
+      PakeAuthenticationException,
+      ServiceRequestException {
     final ServiceType serviceType = serviceTypeRegistry.getServiceType(serviceTypeId);
     if (EncryptOption.user != serviceType.encryptKey()) {
       throw new ServiceRequestException("This service type must use encrypted payload");
@@ -462,9 +463,9 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
   public ServiceResult deviceAuthenticatedService(
       final String serviceTypeId, final ExchangePayload<?> payload, final String context)
       throws PakeSessionException,
-          ServiceResponseException,
-          PakeAuthenticationException,
-          ServiceRequestException {
+      ServiceResponseException,
+      PakeAuthenticationException,
+      ServiceRequestException {
     final ServiceType serviceType = serviceTypeRegistry.getServiceType(serviceTypeId);
     if (EncryptOption.device != serviceType.encryptKey()) {
       throw new ServiceRequestException(
@@ -476,9 +477,9 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
   @Override
   public ServiceResult deviceAuthenticatedService(final String serviceType, final String context)
       throws PakeSessionException,
-          ServiceResponseException,
-          PakeAuthenticationException,
-          ServiceRequestException {
+      ServiceResponseException,
+      PakeAuthenticationException,
+      ServiceRequestException {
     return deviceAuthenticatedService(serviceType, new NullPayload(), context);
   }
 
@@ -488,9 +489,9 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
       final String context,
       String sessionId)
       throws PakeSessionException,
-          ServiceResponseException,
-          PakeAuthenticationException,
-          ServiceRequestException {
+      ServiceResponseException,
+      PakeAuthenticationException,
+      ServiceRequestException {
     try {
       if (!contextInfoMap.containsKey(context)) {
         throw new PakeSessionException(String.format("The context %s is not available", context));

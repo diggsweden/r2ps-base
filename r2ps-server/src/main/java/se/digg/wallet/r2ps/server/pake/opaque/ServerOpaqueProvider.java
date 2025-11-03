@@ -24,7 +24,8 @@ import se.digg.wallet.r2ps.commons.pake.opaque.PakeSessionRegistry;
 public class ServerOpaqueProvider {
 
   private final ServerOpaqueEntity serverOpaqueEntity;
-  @Getter private final PakeSessionRegistry<ServerPakeRecord> pakeSessionRegistry;
+  @Getter
+  private final PakeSessionRegistry<ServerPakeRecord> pakeSessionRegistry;
   private final ClientRecordRegistry clientRecordRegistry;
   private final Duration defaultMaxRecordDuration;
   private final SessionTaskRegistry sessionTaskRegistry;
@@ -35,7 +36,8 @@ public class ServerOpaqueProvider {
    */
   private final Duration finalizedDuration;
 
-  @Getter private final Duration lastUpdated = Duration.ofMinutes(10);
+  @Getter
+  private final Duration lastUpdated = Duration.ofMinutes(10);
 
   public ServerOpaqueProvider(
       final ServerOpaqueEntity serverOpaqueEntity,
@@ -113,11 +115,11 @@ public class ServerOpaqueProvider {
    * @param ke3 the cryptographic proof provided by the client to finalize the PAKE session
    * @param pakeSessionId the unique identifier of the PAKE session to finalize
    * @return a {@code FinalizeResponse} object containing the finalized session details such as
-   *     session ID, expiration time, and the associated session task
+   *         session ID, expiration time, and the associated session task
    * @throws PakeSessionException if the PAKE session could not be completed or the session record
-   *     is invalid
+   *         is invalid
    * @throws ClientAuthenticationException if the provided cryptographic proof fails to authenticate
-   *     the client
+   *         the client
    */
   public FinalizeResponse finalizeAuthRequest(final byte[] ke3, String pakeSessionId)
       throws PakeSessionException, ClientAuthenticationException {
@@ -134,11 +136,11 @@ public class ServerOpaqueProvider {
    * @param sessionTaskId the unique identifier of the session task, if applicable
    * @param requestedSessionDuration the duration requested for the authenticated session
    * @return a {@code FinalizeResponse} object containing the finalized session details such as
-   *     session ID, expiration time, and associated session task
+   *         session ID, expiration time, and associated session task
    * @throws PakeSessionException if the PAKE session could not be completed or session record is
-   *     invalid
+   *         invalid
    * @throws ClientAuthenticationException if the provided cryptographic proof fails to authenticate
-   *     the client
+   *         the client
    */
   public FinalizeResponse finalizeAuthRequest(
       final byte[] ke3,

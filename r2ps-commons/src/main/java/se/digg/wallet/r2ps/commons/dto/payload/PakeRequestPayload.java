@@ -18,9 +18,10 @@ import se.digg.wallet.r2ps.commons.dto.PakeState;
  * extends {@link ExchangePayload}, inheriting its base properties such as a nonce and creation
  * timestamp, while defining additional fields specific to PAKE protocol requests.
  *
- * <p>The payload includes: - The PAKE protocol being used. - The current state of the PAKE
- * operation, such as evaluation or finalization. - Optional authorization data, typically used for
- * PIN registrations or resets. - Protocol-specific data associated with the current state.
+ * <p>
+ * The payload includes: - The PAKE protocol being used. - The current state of the PAKE operation,
+ * such as evaluation or finalization. - Optional authorization data, typically used for PIN
+ * registrations or resets. - Protocol-specific data associated with the current state.
  */
 @Data
 @NoArgsConstructor

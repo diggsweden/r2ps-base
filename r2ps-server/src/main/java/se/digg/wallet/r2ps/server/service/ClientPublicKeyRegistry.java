@@ -8,7 +8,7 @@ public interface ClientPublicKeyRegistry {
    * @param clientId the unique identifier of the client whose public key record is to be retrieved
    * @param kid the key identifier of the specific public key record to retrieve
    * @return the {@link ClientPublicKeyRecord} corresponding to the given client ID and key ID, or
-   *     null if no matching record is found
+   *         null if no matching record is found
    */
   ClientPublicKeyRecord getClientPublicKeyRecord(String clientId, String kid);
 

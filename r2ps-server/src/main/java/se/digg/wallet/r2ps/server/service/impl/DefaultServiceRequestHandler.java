@@ -58,7 +58,8 @@ public class DefaultServiceRequestHandler implements ServiceRequestHandler {
   private final PakeSessionRegistry<ServerPakeRecord> pakeSessionRegistry;
 
   // Defaults
-  @Setter private Duration requestMaxAge = Duration.ofSeconds(30);
+  @Setter
+  private Duration requestMaxAge = Duration.ofSeconds(30);
 
   public DefaultServiceRequestHandler(OpaqueServiceRequestHandlerConfiguration configuration)
       throws JOSEException {
@@ -90,9 +91,9 @@ public class DefaultServiceRequestHandler implements ServiceRequestHandler {
       case "EC" -> new ECDSAVerifier((ECPublicKey) clientPublicKey);
       case "RSA" -> new RSASSAVerifier((RSAPublicKey) clientPublicKey);
       default ->
-          throw new ServiceRequestHandlingException(
-              "Unsupported public key algorithm: " + clientPublicKey.getAlgorithm(),
-              ErrorCode.ILLEGAL_REQUEST_DATA);
+        throw new ServiceRequestHandlingException(
+            "Unsupported public key algorithm: " + clientPublicKey.getAlgorithm(),
+            ErrorCode.ILLEGAL_REQUEST_DATA);
     };
   }
 
@@ -193,13 +194,12 @@ public class DefaultServiceRequestHandler implements ServiceRequestHandler {
               .filter(handler -> handler.supports(serviceType, serviceRequest.getContext()))
               .findFirst()
               .orElseThrow(
-                  () ->
-                      new ServiceRequestHandlingException(
-                          String.format(
-                              "The service type '%s' under context '%s' is not supported by"
-                                  + " any handler",
-                              serviceType.id(), serviceRequest.getContext()),
-                          ErrorCode.ACCESS_DENIED));
+                  () -> new ServiceRequestHandlingException(
+                      String.format(
+                          "The service type '%s' under context '%s' is not supported by"
+                              + " any handler",
+                          serviceType.id(), serviceRequest.getContext()),
+                      ErrorCode.ACCESS_DENIED));
       ExchangePayload<?> responsePayload =
           serviceTypeHandler.processServiceRequest(
               serviceRequest, pakeSession, decryptedPayload, clientPublicKeyRecord, serviceType);

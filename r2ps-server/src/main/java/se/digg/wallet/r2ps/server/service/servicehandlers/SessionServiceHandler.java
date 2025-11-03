@@ -46,23 +46,21 @@ public class SessionServiceHandler implements ServiceTypeHandler {
       final String context =
           Optional.ofNullable(serviceRequest.getContext())
               .orElseThrow(
-                  () ->
-                      new ServiceRequestHandlingException(
-                          "No context in request", ErrorCode.ILLEGAL_REQUEST_DATA));
+                  () -> new ServiceRequestHandlingException(
+                      "No context in request", ErrorCode.ILLEGAL_REQUEST_DATA));
       final String clientId =
           Optional.ofNullable(serviceRequest.getClientID())
               .orElseThrow(
-                  () ->
-                      new ServiceRequestHandlingException(
-                          "No client ID in request", ErrorCode.ILLEGAL_REQUEST_DATA));
+                  () -> new ServiceRequestHandlingException(
+                      "No client ID in request", ErrorCode.ILLEGAL_REQUEST_DATA));
       return switch (serviceType.id()) {
         case ServiceType.SESSION_END -> endSession(decryptedPayload);
         case ServiceType.SESSION_CONTEXT_END ->
-            endContextSessions(clientId, serviceRequest.getKid(), context);
+          endContextSessions(clientId, serviceRequest.getKid(), context);
         default ->
-            throw new ServiceRequestHandlingException(
-                String.format("Unsupported service type %s", serviceType.id()),
-                ErrorCode.ILLEGAL_REQUEST_DATA);
+          throw new ServiceRequestHandlingException(
+              String.format("Unsupported service type %s", serviceType.id()),
+              ErrorCode.ILLEGAL_REQUEST_DATA);
       };
     } catch (NullPointerException | IOException e) {
       throw new ServiceRequestHandlingException(

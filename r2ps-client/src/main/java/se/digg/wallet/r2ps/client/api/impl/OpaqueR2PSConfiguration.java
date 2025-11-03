@@ -72,8 +72,9 @@ public class OpaqueR2PSConfiguration {
    * configuration, including cryptographic settings, session management, context configurations,
    * and registry components.
    *
-   * <p>Each method in this builder supports method chaining for a fluent API design, facilitating
-   * the easy and clear creation of custom configurations.
+   * <p>
+   * Each method in this builder supports method chaining for a fluent API design, facilitating the
+   * easy and clear creation of custom configurations.
    */
   public static class Builder {
 
@@ -96,7 +97,7 @@ public class OpaqueR2PSConfiguration {
      * uniquely identify the client interacting with the system during secure communication.
      *
      * @param clientIdentity a {@code String} representing the identity of the client involved in
-     *     the operation
+     *        the operation
      * @return the instance of the {@code Builder} for method chaining
      */
     public Builder clientIdentity(String clientIdentity) {
@@ -111,7 +112,7 @@ public class OpaqueR2PSConfiguration {
      * client-server operations.
      *
      * @param opaqueConfiguration the {@code OpaqueConfiguration} to set in the builder, specifying
-     *     the cryptographic and protocol settings for OPAQUE
+     *        the cryptographic and protocol settings for OPAQUE
      * @return the instance of the {@code Builder} for method chaining
      */
     public Builder opaqueConfiguration(OpaqueConfiguration opaqueConfiguration) {
@@ -137,7 +138,7 @@ public class OpaqueR2PSConfiguration {
      * creation, retrieval, and lifecycle management.
      *
      * @param clientPakeSessionRegistry the PAKE session registry to be set in the configuration,
-     *     which handles instances of {@code ClientPakeRecord}.
+     *        which handles instances of {@code ClientPakeRecord}.
      * @return the instance of the Builder for method chaining.
      */
     public Builder clientPakeSessionRegistry(
@@ -163,7 +164,7 @@ public class OpaqueR2PSConfiguration {
      * the mechanism for requesting and interacting with RPS-Ops servers.
      *
      * @param serviceExchangeConnector the {@code ServiceExchangeConnector} instance to be set in
-     *     the configuration
+     *        the configuration
      * @return the instance of the {@code Builder} for method chaining
      */
     public Builder serviceExchangeConnector(ServiceExchangeConnector serviceExchangeConnector) {
@@ -201,10 +202,10 @@ public class OpaqueR2PSConfiguration {
      * @param jwsAlgorithm the JSON Web Signature (JWS) algorithm to be used for signing
      * @param serverIdentity the identity of the server associated with the context
      * @param serverPublicKey the server's public key used for verification of server responses and
-     *     opaque responses
+     *        opaque responses
      * @return the instance of the {@code Builder} for method chaining
      * @throws JOSEException if an error occurs during the creation of signing or verification
-     *     parameters
+     *         parameters
      */
     public Builder addContext(
         String context,
@@ -240,7 +241,7 @@ public class OpaqueR2PSConfiguration {
      * missing or if the context configuration map is empty.
      *
      * @return an instance of {@code OpaqueRpsOpsConfiguration}, fully initialized with the current
-     *     builder's state.
+     *         builder's state.
      * @throws NullPointerException if any required configuration field is missing.
      * @throws IllegalArgumentException if the context configuration map is empty.
      */

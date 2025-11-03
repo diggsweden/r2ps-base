@@ -46,12 +46,12 @@ public abstract class HsmServiceHandler implements ServiceTypeHandler {
   @Override
   public boolean supports(final ServiceType serviceType, final String context) {
     return List.of(
-                ServiceType.HSM_ECDSA,
-                ServiceType.HSM_ECDH,
-                ServiceType.HSM_KEYGEN,
-                ServiceType.HSM_DELETE_KEY,
-                ServiceType.HSM_LIST_KEYS)
-            .contains(serviceType.id())
+        ServiceType.HSM_ECDSA,
+        ServiceType.HSM_ECDH,
+        ServiceType.HSM_KEYGEN,
+        ServiceType.HSM_DELETE_KEY,
+        ServiceType.HSM_LIST_KEYS)
+        .contains(serviceType.id())
         && this.supportedContexts.contains(context);
   }
 
@@ -68,9 +68,8 @@ public abstract class HsmServiceHandler implements ServiceTypeHandler {
     final String clientId =
         Optional.ofNullable(serviceRequest.getClientID())
             .orElseThrow(
-                () ->
-                    new ServiceRequestHandlingException(
-                        "No client ID in request", ErrorCode.ILLEGAL_REQUEST_DATA));
+                () -> new ServiceRequestHandlingException(
+                    "No client ID in request", ErrorCode.ILLEGAL_REQUEST_DATA));
     return switch (serviceType.id()) {
       case ServiceType.HSM_ECDSA -> processEcdsaRequest(decryptedPayload, clientId);
       case ServiceType.HSM_ECDH -> processEcdhRequest(decryptedPayload, clientId);
@@ -78,9 +77,9 @@ public abstract class HsmServiceHandler implements ServiceTypeHandler {
       case ServiceType.HSM_LIST_KEYS -> processListKeyRequest(decryptedPayload, clientId);
       case ServiceType.HSM_DELETE_KEY -> processKeyDeleteRequest(decryptedPayload, clientId);
       default ->
-          throw new ServiceRequestHandlingException(
-              String.format("Unsupported Service type ID %s", serviceType.id()),
-              ErrorCode.ILLEGAL_REQUEST_DATA);
+        throw new ServiceRequestHandlingException(
+            String.format("Unsupported Service type ID %s", serviceType.id()),
+            ErrorCode.ILLEGAL_REQUEST_DATA);
     };
   }
 
@@ -91,16 +90,14 @@ public abstract class HsmServiceHandler implements ServiceTypeHandler {
       final String kid =
           Optional.ofNullable(signRequest.getKid())
               .orElseThrow(
-                  () ->
-                      new ServiceRequestHandlingException(
-                          "No key identifier provided for HSM operations request",
-                          ErrorCode.ILLEGAL_REQUEST_DATA));
+                  () -> new ServiceRequestHandlingException(
+                      "No key identifier provided for HSM operations request",
+                      ErrorCode.ILLEGAL_REQUEST_DATA));
       final byte[] tbsHash =
           Optional.ofNullable(signRequest.getTbsHash())
               .orElseThrow(
-                  () ->
-                      new ServiceRequestHandlingException(
-                          "No data to be signed in sign request", ErrorCode.ILLEGAL_REQUEST_DATA));
+                  () -> new ServiceRequestHandlingException(
+                      "No data to be signed in sign request", ErrorCode.ILLEGAL_REQUEST_DATA));
       byte[] signature = ecdsaSignHashed(clientId, kid, tbsHash);
       return new ByteArrayPayload(signature);
     } catch (IOException e) {
@@ -116,17 +113,15 @@ public abstract class HsmServiceHandler implements ServiceTypeHandler {
       final String kid =
           Optional.ofNullable(dhRequest.getKid())
               .orElseThrow(
-                  () ->
-                      new ServiceRequestHandlingException(
-                          "No key identifier provided for HSM operations request",
-                          ErrorCode.ILLEGAL_REQUEST_DATA));
+                  () -> new ServiceRequestHandlingException(
+                      "No key identifier provided for HSM operations request",
+                      ErrorCode.ILLEGAL_REQUEST_DATA));
       final PublicKey publicKey =
           Optional.ofNullable(dhRequest.getPublicKey())
               .orElseThrow(
-                  () ->
-                      new ServiceRequestHandlingException(
-                          "No public key in Diffier Hellman request",
-                          ErrorCode.ILLEGAL_REQUEST_DATA));
+                  () -> new ServiceRequestHandlingException(
+                      "No public key in Diffier Hellman request",
+                      ErrorCode.ILLEGAL_REQUEST_DATA));
       byte[] sharedSecret = diffieHellman(clientId, kid, publicKey);
       return new ByteArrayPayload(sharedSecret);
     } catch (IOException e) {
@@ -201,9 +196,9 @@ public abstract class HsmServiceHandler implements ServiceTypeHandler {
    *
    * @param clientId the unique identifier of the client making the request; must not be null
    * @param keyRequestCurveName the name of the elliptic curve associated with the request; must not
-   *     be null
+   *        be null
    * @throws ServiceRequestHandlingException if the request does not meet the acceptance criteria or
-   *     if an error occurs during validation
+   *         if an error occurs during validation
    */
   protected abstract void validateAgainstKeyGenerationPolicy(
       final String clientId, final String keyRequestCurveName)
@@ -216,7 +211,7 @@ public abstract class HsmServiceHandler implements ServiceTypeHandler {
    * @param clientId the unique identifier of the client making the request; must not be null
    * @param curveFilter a list of elliptic curve names used to filter the keys; must not be null
    * @return a list of {@link ListKeysResponsePayload.KeyInfo} objects containing the key
-   *     information that matches the filter criteria
+   *         information that matches the filter criteria
    */
   protected abstract List<ListKeysResponsePayload.KeyInfo> getKeyInfo(
       String clientId, List<String> curveFilter)
@@ -228,9 +223,9 @@ public abstract class HsmServiceHandler implements ServiceTypeHandler {
    * HSM, adhering to the specific service requirements.
    *
    * @param clientId the unique identifier of the client requesting the key generation; must not be
-   *     null
+   *        null
    * @param keyRequestCurveName the name of the elliptic curve to be used for key generation; must
-   *     not be null
+   *        not be null
    * @throws ServiceRequestHandlingException if an error occurs during the key generation process
    */
   protected abstract void generateKey(final String clientId, final String keyRequestCurveName)
@@ -241,7 +236,7 @@ public abstract class HsmServiceHandler implements ServiceTypeHandler {
    * This operation removes the key from the HSM, ensuring that it is no longer accessible.
    *
    * @param clientId the unique identifier of the client whose key is to be deleted; must not be
-   *     null
+   *        null
    * @param kid the key identifier of the cryptographic key to be deleted; must not be null
    * @throws ServiceRequestHandlingException if an error occurs during the key deletion process
    */
@@ -256,7 +251,7 @@ public abstract class HsmServiceHandler implements ServiceTypeHandler {
    * @param publicKey the Diffie-Hellman public key provided by the other party; must not be null
    * @return the derived shared secret as a byte array
    * @throws ServiceRequestHandlingException if there is an error processing the Diffie-Hellman key
-   *     exchange
+   *         exchange
    */
   protected abstract byte[] diffieHellman(
       final String clientId, final String kid, final PublicKey publicKey)

@@ -13,7 +13,8 @@ import se.digg.wallet.r2ps.commons.StaticResources;
 @AllArgsConstructor
 public class JsonPayload implements ExchangePayload<JsonPayload> {
 
-  @Getter Map<String, Object> data;
+  @Getter
+  Map<String, Object> data;
 
   public JsonPayload() {
     this.data = new HashMap<>();

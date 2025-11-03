@@ -29,14 +29,15 @@ public class JSONUtils {
    * handling JSON serialization and deserialization.
    *
    * <ul>
-   *   <li>Configured to disable writing dates as timestamps ({@code
+   * <li>Configured to disable writing dates as timestamps ({@code
    *       SerializationFeature.WRITE_DATES_AS_TIMESTAMPS}).
-   *   <li>Supports Java 8 date and time types through the registration of {@code JavaTimeModule}.
-   *   <li>Excludes properties with {@code null} values during serialization, using {@code
+   * <li>Supports Java 8 date and time types through the registration of {@code JavaTimeModule}.
+   * <li>Excludes properties with {@code null} values during serialization, using {@code
    *       JsonInclude.Include.NON_NULL}.
    * </ul>
    *
-   * <p>This object is intended to be reused anywhere in the application to ensure consistent JSON
+   * <p>
+   * This object is intended to be reused anywhere in the application to ensure consistent JSON
    * processing behavior.
    */
   public static final ObjectMapper JSON_MAPPER =
@@ -104,7 +105,7 @@ public class JSONUtils {
    * RSAKey or ECKey.
    *
    * @param jwk the JSON Web Key (JWK) object from which the public key should be extracted. Must be
-   *     an instance of RSAKey or ECKey.
+   *        an instance of RSAKey or ECKey.
    * @return the extracted public key as a {@code PublicKey} object.
    * @throws JOSEException if an error occurs during the public key extraction process.
    * @throws IllegalArgumentException if the provided JWK is of an unsupported type.

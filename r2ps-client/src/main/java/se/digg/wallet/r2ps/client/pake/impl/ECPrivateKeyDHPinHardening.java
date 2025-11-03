@@ -51,7 +51,7 @@ public class ECPrivateKeyDHPinHardening implements PinHardening {
    * values for initialization.
    *
    * @param profile the hash-to-curve profile that defines the elliptic curve, hashing, and mapping
-   *     parameters to be used
+   *        parameters to be used
    */
   public ECPrivateKeyDHPinHardening(final HashToCurveProfile profile) {
     this(profile, DEFAULT_DST);
@@ -62,9 +62,9 @@ public class ECPrivateKeyDHPinHardening implements PinHardening {
    * using default salt and info values.
    *
    * @param profile the hash-to-curve profile that defines the elliptic curve, hashing, and mapping
-   *     parameters to be used
+   *        parameters to be used
    * @param dst the domain separation tag (DST), used to uniquely distinguish applications of a
-   *     hash-to-curve operation
+   *        hash-to-curve operation
    */
   public ECPrivateKeyDHPinHardening(final HashToCurveProfile profile, byte[] dst) {
     this(profile, dst, DEFAULT_SALT, DEFAULT_INFO);
@@ -74,9 +74,9 @@ public class ECPrivateKeyDHPinHardening implements PinHardening {
    * Constructs an ECPrivateKeyPinSeeder instance, initializing it with the specified parameters.
    *
    * @param profile the hash-to-curve profile that defines the elliptic curve, hashing, and mapping
-   *     parameters to be used
+   *        parameters to be used
    * @param dst the domain separation tag (DST), used to uniquely distinguish applications of a
-   *     hash-to-curve operation
+   *        hash-to-curve operation
    * @param salt the optional salt value used during key derivation
    * @param info additional context-specific information used during key derivation
    */

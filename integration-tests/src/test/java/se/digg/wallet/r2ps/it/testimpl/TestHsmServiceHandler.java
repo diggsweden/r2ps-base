@@ -71,12 +71,14 @@ public class TestHsmServiceHandler extends HsmServiceHandler {
   /**
    * Determines whether a request for a key operation is accepted based on the client's key pairs.
    *
-   * <p>If the provided client ID does not have more than one existing key pair for the requested
+   * <p>
+   * If the provided client ID does not have more than one existing key pair for the requested
    * curve, the method will accept the request.
    *
-   * <p>This is appropriate for test. Production variations of this class should also evaluate
-   * whether the request suits a valid need for re-keying and should take into account the existing
-   * key count and creation times.
+   * <p>
+   * This is appropriate for test. Production variations of this class should also evaluate whether
+   * the request suits a valid need for re-keying and should take into account the existing key
+   * count and creation times.
    *
    * <p>
    *
@@ -93,9 +95,8 @@ public class TestHsmServiceHandler extends HsmServiceHandler {
       return;
     }
     if (clientKeyPairs.values().stream()
-            .filter(keyPair -> keyPair.curveName().equals(keyRequestCurveName))
-            .count()
-        > 1) {
+        .filter(keyPair -> keyPair.curveName().equals(keyRequestCurveName))
+        .count() > 1) {
       throw new ServiceRequestHandlingException(
           "The this curve already has the maximum number of keys (2)", ErrorCode.UNAUTHORIZED);
     }
@@ -110,17 +111,15 @@ public class TestHsmServiceHandler extends HsmServiceHandler {
     }
     keyPairs.get(clientId).entrySet().stream()
         .filter(
-            entry ->
-                requestedCurveNames.isEmpty()
-                    || requestedCurveNames.contains(entry.getValue().curveName()))
+            entry -> requestedCurveNames.isEmpty()
+                || requestedCurveNames.contains(entry.getValue().curveName()))
         .forEach(
-            (entry) ->
-                keyInfoList.add(
-                    new ListKeysResponsePayload.KeyInfo(
-                        entry.getValue().kid(),
-                        entry.getValue().curveName(),
-                        entry.getValue().creationTime(),
-                        entry.getValue().keyPair.getPublic())));
+            (entry) -> keyInfoList.add(
+                new ListKeysResponsePayload.KeyInfo(
+                    entry.getValue().kid(),
+                    entry.getValue().curveName(),
+                    entry.getValue().creationTime(),
+                    entry.getValue().keyPair.getPublic())));
     return keyInfoList;
   }
 
@@ -198,5 +197,6 @@ public class TestHsmServiceHandler extends HsmServiceHandler {
     }
   }
 
-  public record HsmEcKeyPair(String kid, KeyPair keyPair, String curveName, Instant creationTime) {}
+  public record HsmEcKeyPair(String kid, KeyPair keyPair, String curveName, Instant creationTime) {
+  }
 }

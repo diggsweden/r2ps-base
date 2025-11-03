@@ -144,7 +144,7 @@ class OpaqueR2PSClientApiTest {
    *
    * @return an instance of {@link ServiceExchangeConnector}, specifically a test implementation
    * @throws Exception if any error occurs during the creation or configuration of the test
-   *     connector
+   *         connector
    */
   private static ServiceExchangeConnector createTestConnector() throws Exception {
 

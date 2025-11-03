@@ -16,10 +16,12 @@ import se.digg.wallet.r2ps.commons.StaticResources;
  * extends the {@code Payload} class and is used to encapsulate the response data associated with a
  * PAKE session, as defined by the server.
  *
- * <p>The PAKE response payload includes the unique session ID assigned by the server and the
- * response data associated with the current PAKE state in the request.
+ * <p>
+ * The PAKE response payload includes the unique session ID assigned by the server and the response
+ * data associated with the current PAKE state in the request.
  *
- * <p>This response is valid for all PAKE exchanges. This includes PIN registrations, PIN change and
+ * <p>
+ * This response is valid for all PAKE exchanges. This includes PIN registrations, PIN change and
  * Authentication.
  */
 @Data

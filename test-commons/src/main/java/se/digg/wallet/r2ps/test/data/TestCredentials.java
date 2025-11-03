@@ -38,8 +38,8 @@ public class TestCredentials {
       walletHsmAccessP256keyPair =
           new KeyPair(
               walletHsmAccessKeyStore.getCertificate("wallet-hsm-access").getPublicKey(),
-              (ECPrivateKey)
-                  walletHsmAccessKeyStore.getKey("wallet-hsm-access", "Test1234".toCharArray()));
+              (ECPrivateKey) walletHsmAccessKeyStore.getKey("wallet-hsm-access",
+                  "Test1234".toCharArray()));
       KeyStore serverKeyStore = KeyStore.getInstance("JKS");
       serverKeyStore.load(
           TestCredentials.class.getClassLoader().getResourceAsStream("server-p256.jks"),

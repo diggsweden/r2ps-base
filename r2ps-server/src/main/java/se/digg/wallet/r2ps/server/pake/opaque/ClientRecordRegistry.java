@@ -13,8 +13,8 @@ public interface ClientRecordRegistry {
    *
    * @param clientId the unique identifier of the client whose records are to be retrieved
    * @return a map where the keys are record identifiers (e.g., "kid") and the values are the
-   *     corresponding record data in byte array form, or null if no records are associated with the
-   *     specified client
+   *         corresponding record data in byte array form, or null if no records are associated with
+   *         the specified client
    */
   Map<String, byte[]> getClientRecords(String clientId);
 

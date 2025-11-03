@@ -43,7 +43,8 @@ public class OpaqueServiceHandler implements ServiceTypeHandler {
   private final ServerOpaqueProvider opaqueProvider;
   private final PinAuthorization pinAuthorization;
 
-  @Setter private Duration pinChangeMaxSessionAge = Duration.ofSeconds(30);
+  @Setter
+  private Duration pinChangeMaxSessionAge = Duration.ofSeconds(30);
 
   public OpaqueServiceHandler(
       final List<String> supportedContexts,
@@ -89,7 +90,7 @@ public class OpaqueServiceHandler implements ServiceTypeHandler {
   @Override
   public boolean supports(final ServiceType serviceType, final String context) {
     return List.of(ServiceType.AUTHENTICATE, ServiceType.PIN_CHANGE, ServiceType.PIN_REGISTRATION)
-            .contains(serviceType.id())
+        .contains(serviceType.id())
         && this.supportedContexts.contains(context);
   }
 
@@ -110,8 +111,8 @@ public class OpaqueServiceHandler implements ServiceTypeHandler {
             serviceRequest, pakeSession, decryptedPayload, clientPublicKeyRecord, serviceType);
       }
       default ->
-          throw new ServiceRequestHandlingException(
-              "Unsupported service type: " + serviceType.id(), ErrorCode.ILLEGAL_REQUEST_DATA);
+        throw new ServiceRequestHandlingException(
+            "Unsupported service type: " + serviceType.id(), ErrorCode.ILLEGAL_REQUEST_DATA);
     }
   }
 
@@ -187,14 +188,14 @@ public class OpaqueServiceHandler implements ServiceTypeHandler {
    * finalizes the authentication process and creates an appropriate response payload.
    *
    * @param serviceRequest the request object containing client information, key identifiers, and
-   *     other contextual data needed to process the PAKE request
+   *        other contextual data needed to process the PAKE request
    * @param decryptedPayload the decrypted payload of the request, expected to contain PAKE-specific
-   *     data for processing authentication
+   *        data for processing authentication
    * @return an {@code ExchangePayload<?>} containing the processed response data based on the PAKE
-   *     state, which may include evaluation results or finalization details
+   *         state, which may include evaluation results or finalization details
    * @throws ServiceRequestHandlingException if an error occurs during the handling of the
-   *     authentication request, such as missing or invalid input data, decryption issues, or other
-   *     protocol-specific exceptions
+   *         authentication request, such as missing or invalid input data, decryption issues, or
+   *         other protocol-specific exceptions
    */
   private ExchangePayload<?> processOpaqueAuthentication(
       final ServiceRequest serviceRequest, final byte[] decryptedPayload)

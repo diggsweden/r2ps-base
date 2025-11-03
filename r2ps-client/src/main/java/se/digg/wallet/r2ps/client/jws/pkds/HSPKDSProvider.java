@@ -43,10 +43,12 @@ public class HSPKDSProvider extends BaseJWSProvider {
   }
 
   /** The secret, {@code null} if specified as {@link SecretKey}. */
-  @Setter private byte[] secret;
+  @Setter
+  private byte[] secret;
 
   /** The secret key, {@code null} if specified as byte array. */
-  @Setter private SecretKey secretKey;
+  @Setter
+  private SecretKey secretKey;
 
   public HSPKDSProvider(final JWSAlgorithm alg) throws JOSEException {
 
@@ -62,11 +64,11 @@ public class HSPKDSProvider extends BaseJWSProvider {
    * extracted from the JSON Web Key (JWK) or the X.509 certificate contained in the PKDSPublicKey.
    *
    * @param pkdsPublicKey the PKDSPublicKey instance containing the key information, such as a JWK
-   *     or X.509 certificate. Must not be null.
+   *        or X.509 certificate. Must not be null.
    * @return the extracted public key as a {@code PublicKey} object, or {@code null} if neither the
-   *     JWK nor the X.509 certificate is present.
+   *         JWK nor the X.509 certificate is present.
    * @throws JOSEException if an error occurs during the key extraction process, such as issues with
-   *     the provided JWK or certificate.
+   *         the provided JWK or certificate.
    */
   public static PublicKey getPkdsPublicKey(final PKDSPublicKey pkdsPublicKey) throws JOSEException {
     try {
@@ -95,7 +97,7 @@ public class HSPKDSProvider extends BaseJWSProvider {
    *
    * @param secretLength The secret length in bits. Must not be negative.
    * @return The compatible HMAC algorithms, empty set if the secret length is too short for any
-   *     algorithm.
+   *         algorithm.
    */
   public static Set<JWSAlgorithm> getCompatibleAlgorithms(final int secretLength) {
 
@@ -120,7 +122,7 @@ public class HSPKDSProvider extends BaseJWSProvider {
    * Returns the minimal required secret length for the specified HMAC JWS algorithm.
    *
    * @param alg The HMAC JWS algorithm. Must be {@link #SUPPORTED_ALGORITHMS supported} and not
-   *     {@code null}.
+   *        {@code null}.
    * @return The minimal required secret length, in bits.
    * @throws JOSEException If the algorithm is not supported.
    */
@@ -178,8 +180,8 @@ public class HSPKDSProvider extends BaseJWSProvider {
   /**
    * Gets the secret bytes.
    *
-   * @return The secret bytes, {@code null} if this provider was constructed with a {@link
-   *     SecretKey} that doesn't expose the key material.
+   * @return The secret bytes, {@code null} if this provider was constructed with a
+   *         {@link SecretKey} that doesn't expose the key material.
    */
   public byte[] getSecret() {
     if (this.secretKey != null) {
@@ -195,7 +197,7 @@ public class HSPKDSProvider extends BaseJWSProvider {
    * Gets the secret as a UTF-8 encoded string.
    *
    * @return The secret as a UTF-8 encoded string, {@code null} if this provider was constructed
-   *     with a {@link SecretKey} that doesn't expose the key material.
+   *         with a {@link SecretKey} that doesn't expose the key material.
    */
   public String getSecretString() {
 
@@ -212,7 +214,7 @@ public class HSPKDSProvider extends BaseJWSProvider {
    * Ensures the secret length satisfies the minimum required for the specified HMAC JWS algorithm.
    *
    * @param alg The HMAC JWS algorithm. Must be {@link #SUPPORTED_ALGORITHMS supported} and not
-   *     {@code null}.
+   *        {@code null}.
    * @throws JOSEException If the algorithm is not supported.
    * @throws KeyLengthException If the secret length is shorter than the minimum required.
    */

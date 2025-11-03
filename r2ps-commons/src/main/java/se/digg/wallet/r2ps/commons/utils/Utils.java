@@ -14,7 +14,7 @@ public class Utils {
    *
    * @param decryptedPayload the byte array to be formatted
    * @return a human-readable string representation of the byte array, either as pretty-printed
-   *     JSON, plain text if printable, or hexadecimal if non-printable
+   *         JSON, plain text if printable, or hexadecimal if non-printable
    */
   public static String prettyPrintByteArray(final byte[] decryptedPayload) {
     try {

@@ -23,7 +23,8 @@ import se.digg.wallet.r2ps.client.jws.pkds.PKDSSuite;
 
 public class HSECPkdsVerifier extends HSPKDSProvider
     implements JWSVerifier, CriticalHeaderParamsAware {
-  @Setter Set<String> deferredCriticalHeaderParams;
+  @Setter
+  Set<String> deferredCriticalHeaderParams;
   private final List<PKDSKeyDerivation> supportedKeyDerivations;
   protected ECPublicKey producerPublicKey;
 

@@ -35,7 +35,7 @@ public class ServiceTypeRegistry {
    * @param id the unique identifier for the service type to retrieve
    * @return the {@link ServiceType} corresponding to the given ID
    * @throws IllegalArgumentException if the specified ID does not correspond to a recognized
-   *     service type
+   *         service type
    */
   @Nonnull
   public ServiceType getServiceType(String id) {
@@ -73,7 +73,8 @@ public class ServiceTypeRegistry {
   /**
    * Removes all service types from the registry.
    *
-   * <p>This method clears all entries in the internal map of service types, leaving the registry
+   * <p>
+   * This method clears all entries in the internal map of service types, leaving the registry
    * empty.
    */
   public void removeAllServiceTypes() {

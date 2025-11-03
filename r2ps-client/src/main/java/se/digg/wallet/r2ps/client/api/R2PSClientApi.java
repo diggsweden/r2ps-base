@@ -19,7 +19,7 @@ public interface R2PSClientApi {
    * @throws PakeSessionException if there is an error while processing the PAKE session
    * @throws PakeAuthenticationException if the provided PIN is invalid or authentication fails
    * @throws ServiceResponseException if the service response indicates a failure or cannot be
-   *     processed
+   *         processed
    */
   PakeResponsePayload createSession(String pin, String context)
       throws PakeSessionException, PakeAuthenticationException, ServiceResponseException;
@@ -35,7 +35,7 @@ public interface R2PSClientApi {
    * @throws PakeSessionException if an error occurs while processing the PAKE session
    * @throws PakeAuthenticationException if the provided PIN is invalid or authentication fails
    * @throws ServiceResponseException if the service response indicates a failure or cannot be
-   *     processed
+   *         processed
    */
   PakeResponsePayload createSession(
       String pin, String context, String task, Duration requestedDuration)
@@ -65,11 +65,11 @@ public interface R2PSClientApi {
    * @param pin the personal identification number to be registered for the context
    * @param context the context identifier for which the PIN is being registered
    * @param authorization a byte array containing the authorization data required to validate the
-   *     PIN registration
+   *        PIN registration
    * @throws PakeSessionException if there is an error during the session or context-related
-   *     operation
+   *         operation
    * @throws PakeAuthenticationException if the provided credentials or authorization data are
-   *     invalid
+   *         invalid
    */
   void registerPin(String pin, String context, byte[] authorization)
       throws PakeSessionException, PakeAuthenticationException;
@@ -86,7 +86,7 @@ public interface R2PSClientApi {
    * @throws PakeSessionException if there is an error related to the PAKE session
    * @throws PakeAuthenticationException if the old PIN is invalid or authentication fails
    * @throws ServiceResponseException if the service response indicates a failure or cannot be
-   *     processed
+   *         processed
    */
   void changePin(String pin, String context, String oldPin)
       throws PakeSessionException, PakeAuthenticationException, ServiceResponseException;
@@ -98,28 +98,28 @@ public interface R2PSClientApi {
    * requested service.
    *
    * @param serviceType the type of the service to request, describing the specific operation to be
-   *     performed
+   *        performed
    * @param payload the payload containing data relevant to the service request, including
-   *     additional context-specific information or details to be processed securely
+   *        additional context-specific information or details to be processed securely
    * @param context the context identifier for the request, typically used to ensure the operation
-   *     is performed under the defined security context with the context-bound session key
+   *        is performed under the defined security context with the context-bound session key
    * @param sessionId the identifier of the session to be used for securely executing the service
-   *     request
+   *        request
    * @return a {@link ServiceResult} object containing the response of the service, including
-   *     success status, error details if applicable, and any additional response data
+   *         success status, error details if applicable, and any additional response data
    * @throws PakeSessionException if an error occurs related to the session during the request
    * @throws ServiceResponseException if the service response indicates a failure, or the response
-   *     cannot be processed
+   *         cannot be processed
    * @throws PakeAuthenticationException if authentication fails for accessing the protected service
    * @throws ServiceRequestException if there is an issue with processing the service request, such
-   *     as invalid parameters
+   *         as invalid parameters
    */
   ServiceResult userAuthenticatedService(
       String serviceType, ExchangePayload<?> payload, String context, String sessionId)
       throws PakeSessionException,
-          ServiceResponseException,
-          PakeAuthenticationException,
-          ServiceRequestException;
+      ServiceResponseException,
+      PakeAuthenticationException,
+      ServiceRequestException;
 
   /**
    * Requests a service based on the specified service type, payload, and context encrypted under a
@@ -127,62 +127,64 @@ public interface R2PSClientApi {
    * the request and returns the result of the operation using an encryption key derived from client
    * and server device keys.
    *
-   * <p>This function is only intended for service types that have been defined as device-encrypted
+   * <p>
+   * This function is only intended for service types that have been defined as device-encrypted
    * services using ephemeral static Diffie-Hellman key derivation. A service is typically
    * device-encrypted only if it is a) required before a session is established, b) Needed if all
    * sessions have been terminated or no session is known or c) Provide services with low-risk
    * profile where no user authentication is necessary.
    *
    * @param serviceType the type of the service to request, describing the specific operation to be
-   *     performed (e.g., data retrieval, basic information request)
+   *        performed (e.g., data retrieval, basic information request)
    * @param payload the payload containing data relevant to the service request, including
-   *     additional context-specific information or details
+   *        additional context-specific information or details
    * @param context the context identifier for the request, typically used to ensure the operation
-   *     is performed under the correct logical scope
+   *        is performed under the correct logical scope
    * @return a {@link ServiceResult} object containing the response of the service, including
-   *     success status, error details if applicable, and any additional response data
+   *         success status, error details if applicable, and any additional response data
    * @throws PakeSessionException if an error occurs related to the session during the request
    * @throws ServiceResponseException if the service response indicates a failure, or the response
-   *     cannot be processed
+   *         cannot be processed
    * @throws PakeAuthenticationException if authentication fails for accessing the unencrypted
-   *     service
+   *         service
    * @throws ServiceRequestException if there is an issue with processing the service request, such
-   *     as invalid parameters
+   *         as invalid parameters
    */
   ServiceResult deviceAuthenticatedService(
       String serviceType, ExchangePayload<?> payload, String context)
       throws PakeSessionException,
-          ServiceResponseException,
-          PakeAuthenticationException,
-          ServiceRequestException;
+      ServiceResponseException,
+      PakeAuthenticationException,
+      ServiceRequestException;
 
   /**
    * Requests an unencrypted service based on the specified service type and context. This method
    * processes the service request without involving an encrypted session and sends no service
    * request payload.
    *
-   * <p>This function is only allowed for service types that have been defined as unencrypted
-   * services. A service is typically only unencrypted if it is a) required before a session is
-   * established, b) needed if all sessions has been terminated or no session is known or c) provide
-   * services with low-risk profile where no encnryption is necessary.
+   * <p>
+   * This function is only allowed for service types that have been defined as unencrypted services.
+   * A service is typically only unencrypted if it is a) required before a session is established,
+   * b) needed if all sessions has been terminated or no session is known or c) provide services
+   * with low-risk profile where no encnryption is necessary.
    *
    * @param serviceType the type of the service to request, describing the specific operation to be
-   *     performed, such as data retrieval or basic information requests
+   *        performed, such as data retrieval or basic information requests
    * @param context the context identifier for the request, typically used to ensure the operation
-   *     is performed under the correct logical scope
+   *        is performed under the correct logical scope
    * @return a {@link ServiceResult} object containing the response of the service, including
-   *     success status, error details if applicable, and any additional response data
+   *         success status, error details if applicable, and any additional response data
    * @throws PakeSessionException if an error occurs related to the session during the request
    * @throws ServiceResponseException if the service response indicates a failure, or the response
-   *     cannot be processed
+   *         cannot be processed
    * @throws PakeAuthenticationException if authentication fails for accessing the unencrypted
-   *     service
+   *         service
    * @throws ServiceRequestException if there is an issue with processing the service request, such
-   *     as invalid parameters
+   *         as invalid parameters
    */
   ServiceResult deviceAuthenticatedService(String serviceType, String context)
       throws PakeSessionException,
-          ServiceResponseException,
-          PakeAuthenticationException,
-          ServiceRequestException;
+      ServiceResponseException,
+      PakeAuthenticationException,
+      ServiceRequestException;
 }

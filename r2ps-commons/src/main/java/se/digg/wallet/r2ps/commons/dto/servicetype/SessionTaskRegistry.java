@@ -25,7 +25,7 @@ public class SessionTaskRegistry {
    *
    * @param id the unique identifier of the session task to retrieve
    * @return the {@link SessionTask} corresponding to the given identifier, or null if no task is
-   *     found with the specified identifier
+   *         found with the specified identifier
    */
   public SessionTask getSessionTaskById(String id) {
     return sessionTasks.get(id);
@@ -64,7 +64,8 @@ public class SessionTaskRegistry {
   /**
    * Removes all session tasks from the registry.
    *
-   * <p>This method clears all entries in the internal map of session tasks, leaving the registry
+   * <p>
+   * This method clears all entries in the internal map of session tasks, leaving the registry
    * empty.
    */
   public void removeAllSessionTasks() {
