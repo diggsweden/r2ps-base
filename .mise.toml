@@ -1,0 +1,28 @@
+# SPDX-FileCopyrightText: 2025 Digg - Agency for Digital Government
+#
+# SPDX-License-Identifier: CC0-1.0
+
+# Tool versions for mise (https://mise.jdx.dev/)
+# Install all tools: mise install
+# Activate in shell: eval "$(mise activate bash)"
+
+[settings]
+experimental = true
+paranoid = true      # Enable strict security checks and verification
+
+[tools]
+
+# Task runner
+"aqua:casey/just" = "1.43.0"
+
+# Linters
+"aqua:rhysd/actionlint" = "v1.7.8"           # GitHub Actions linter
+"aqua:koalaman/shellcheck" = "v0.10.0"       # Shell script linter  
+"aqua:mvdan/sh" = "v3.10.0"                  # Shell formatter (shfmt)
+"ubi:rvben/rumdl" = "v0.0.162"               # Markdown linter
+"aqua:google/yamlfmt" = "v0.19.0"            # YAML formatter
+"aqua:zricethezav/gitleaks" = "v8.28.0"      # Secret scanner
+"aqua:siderolabs/conform" = "v0.1.0-alpha.30" # Commit linter
+
+# License compliance (can also use pip install reuse)
+# For now using container for REUSE as it's already in justfile

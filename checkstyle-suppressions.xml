@@ -5,4 +5,8 @@
 <suppressions>
   <suppress message="Missing a Javadoc comment" />
   <suppress message="First sentence of Javadoc is missing an ending period." />
+  <!-- Suppressing AbbreviationAsWordInName for common abbreviations like JSON, JWK, URL -->
+  <suppress checks="AbbreviationAsWordInName" />
+  <!-- Suppressing LocalVariableName for cryptographic variable names like rBytes, sBytes -->
+  <suppress checks="LocalVariableName" files="ECUtils\.java" />
 </suppressions>
