@@ -20,7 +20,8 @@ import se.digg.wallet.r2ps.commons.pake.opaque.PakeSessionRegistry;
 public class ClientOpaqueProvider {
 
   private final ClientOpaqueEntity clientOpaqueEntity;
-  @Getter private final PakeSessionRegistry<ClientPakeRecord> sessionRegistry;
+  @Getter
+  private final PakeSessionRegistry<ClientPakeRecord> sessionRegistry;
 
   public ClientOpaqueProvider(
       final ClientOpaqueEntity clientOpaqueEntity,

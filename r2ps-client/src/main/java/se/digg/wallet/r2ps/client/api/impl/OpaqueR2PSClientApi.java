@@ -1,7 +1,6 @@
 package se.digg.wallet.r2ps.client.api.impl;
 
 import static se.digg.wallet.r2ps.commons.dto.PakeState.evaluate;
-import static se.digg.wallet.r2ps.commons.dto.PakeState.finalize;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.nimbusds.jose.EncryptionMethod;
@@ -25,6 +24,10 @@ import se.digg.wallet.r2ps.client.api.ClientContextConfiguration;
 import se.digg.wallet.r2ps.client.api.R2PSClientApi;
 import se.digg.wallet.r2ps.client.api.ServiceExchangeConnector;
 import se.digg.wallet.r2ps.client.api.ServiceResult;
+import se.digg.wallet.r2ps.client.api.impl.strategy.AuthenticationStrategy;
+import se.digg.wallet.r2ps.client.api.impl.strategy.PakeOperationStrategy;
+import se.digg.wallet.r2ps.client.api.impl.strategy.PinChangeStrategy;
+import se.digg.wallet.r2ps.client.api.impl.strategy.PinRegistrationStrategy;
 import se.digg.wallet.r2ps.client.jwe.JweCodecFactory;
 import se.digg.wallet.r2ps.client.pake.PinHardening;
 import se.digg.wallet.r2ps.client.pake.impl.ECPrivateKeyDHPinHardening;
@@ -166,14 +169,10 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
     PakeResponsePayload finalizeResponsePayload =
         performPakeFinalization(
             context,
-            ServiceType.AUTHENTICATE,
             ke3.getEncoded(),
-            pakeSessionId,
             clientContextConfiguration,
-            null,
             jweCodec,
-            task,
-            requestedDuration);
+            new AuthenticationStrategy(pakeSessionId, task, requestedDuration));
 
     log.debug("Created session for context {} with sessionID {}", context, pakeSessionId);
 
@@ -275,14 +274,14 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
   }
 
   private PinCredentialResponse initiateRegisterPin(
-      byte[] hPin,
+      byte[] hardenedPin,
       ClientContextConfiguration clientContextConfiguration,
       String context,
       JweCodec jweCodec)
       throws PakeAuthenticationException, ServiceResponseException {
 
     final RegistrationRequestResult registrationRequestBundle =
-        opaqueProvider.createRegistrationRequest(hPin);
+        opaqueProvider.createRegistrationRequest(hardenedPin);
 
     PakeResponsePayload evaluateResponsePayload =
         performPakeEvaluation(
@@ -298,7 +297,7 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
   }
 
   private void completeRegisterPin(
-      byte[] hPin,
+      byte[] hardenedPin,
       PinCredentialResponse pinCredentialResponse,
       ClientContextConfiguration clientContextConfiguration,
       String context,
@@ -308,21 +307,17 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
 
     final RegistrationRecord registrationRecord =
         opaqueProvider.finalizeRegistrationRequest(
-            hPin,
+            hardenedPin,
             pinCredentialResponse.blind(),
             pinCredentialResponse.responseData(),
             clientContextConfiguration.getServerIdentity());
 
     performPakeFinalization(
         context,
-        ServiceType.PIN_REGISTRATION,
         registrationRecord.getEncoded(),
-        null,
         clientContextConfiguration,
-        authorization,
         jweCodec,
-        null,
-        null);
+        new PinRegistrationStrategy(authorization));
   }
 
   @Override
@@ -365,7 +360,7 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
   }
 
   private PinCredentialResponse initiateChangePin(
-      byte[] hPin,
+      byte[] hardenedPin,
       ClientContextConfiguration clientContextConfiguration,
       String context,
       JweCodec jweCodec,
@@ -373,7 +368,7 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
       throws PakeAuthenticationException, ServiceResponseException {
 
     final RegistrationRequestResult registrationRequestBundle =
-        opaqueProvider.createRegistrationRequest(hPin);
+        opaqueProvider.createRegistrationRequest(hardenedPin);
 
     PakeResponsePayload evaluateResponsePayload =
         performPakeEvaluation(
@@ -389,7 +384,7 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
   }
 
   private void completeChangePin(
-      byte[] hPin,
+      byte[] hardenedPin,
       PinCredentialResponse pinCredentialResponse,
       ClientContextConfiguration clientContextConfiguration,
       String context,
@@ -399,21 +394,17 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
 
     final RegistrationRecord registrationRecord =
         opaqueProvider.finalizeRegistrationRequest(
-            hPin,
+            hardenedPin,
             pinCredentialResponse.blind(),
             pinCredentialResponse.responseData(),
             clientContextConfiguration.getServerIdentity());
 
     performPakeFinalization(
         context,
-        ServiceType.PIN_CHANGE,
         registrationRecord.getEncoded(),
-        pakeSessionId,
         clientContextConfiguration,
-        null,
         jweCodec,
-        null,
-        null);
+        new PinChangeStrategy(pakeSessionId));
   }
 
   @Override
@@ -423,9 +414,9 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
       final String context,
       final String sessionId)
       throws PakeSessionException,
-          ServiceResponseException,
-          PakeAuthenticationException,
-          ServiceRequestException {
+      ServiceResponseException,
+      PakeAuthenticationException,
+      ServiceRequestException {
 
     final ServiceType serviceType = serviceTypeRegistry.getServiceType(serviceTypeId);
     if (EncryptOption.user != serviceType.encryptKey()) {
@@ -449,9 +440,9 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
   public ServiceResult deviceAuthenticatedService(
       final String serviceTypeId, final ExchangePayload<?> payload, final String context)
       throws PakeSessionException,
-          ServiceResponseException,
-          PakeAuthenticationException,
-          ServiceRequestException {
+      ServiceResponseException,
+      PakeAuthenticationException,
+      ServiceRequestException {
 
     final ServiceType serviceType = serviceTypeRegistry.getServiceType(serviceTypeId);
     if (EncryptOption.device != serviceType.encryptKey()) {
@@ -473,9 +464,9 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
   @Override
   public ServiceResult deviceAuthenticatedService(final String serviceType, final String context)
       throws PakeSessionException,
-          ServiceResponseException,
-          PakeAuthenticationException,
-          ServiceRequestException {
+      ServiceResponseException,
+      PakeAuthenticationException,
+      ServiceRequestException {
     return deviceAuthenticatedService(serviceType, new NullPayload(), context);
   }
 
@@ -569,41 +560,22 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
 
   private PakeResponsePayload performPakeFinalization(
       final String context,
-      final String serviceTypeId,
       final byte[] requestData,
-      final String pakeSessionId,
       ClientContextConfiguration clientContextConfiguration,
-      byte[] authorization,
       JweCodec jweCodec,
-      String task,
-      Duration sessionDuration)
+      PakeOperationStrategy operationStrategy)
       throws ServiceResponseException, PakeAuthenticationException {
 
     String nonce = Hex.toHexString(OpaqueUtils.random(32));
 
-    PakeRequestPayload pakeFinalizePayload =
-        PakeRequestPayload.builder()
-            .protocol(PakeProtocol.opaque)
-            .state(finalize)
-            .sessionDuration(sessionDuration)
-            .task(task)
-            .requestData(requestData)
-            .authorization(authorization)
-            .build();
-
+    PakeRequestPayload pakeFinalizePayload = operationStrategy.createFinalizePayload(requestData);
     ServiceRequest pakeRequestWrapper =
-        ServiceRequest.builder()
-            .clientID(clientId)
-            .kid(clientContextConfiguration.getKid())
-            .context(context)
-            .serviceType(serviceTypeId)
-            .nonce(nonce)
-            .pakeSessionId(pakeSessionId)
-            .build();
+        operationStrategy.createServiceRequest(
+            clientId, clientContextConfiguration.getKid(), context, nonce);
 
     return sendRequest(
         context,
-        serviceTypeId,
+        operationStrategy.getServiceTypeId(),
         clientContextConfiguration,
         jweCodec,
         nonce,
@@ -642,7 +614,8 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
       } else {
         throw new ServiceResponseException(
             String.format(
-                "Service request of type '%s' under context '%s' failed with http code %d, error code %s and error message: %s",
+                "Service request of type '%s' under context '%s' failed with http code %d, error"
+                    + " code %s and error message: %s",
                 serviceTypeId,
                 context,
                 result.httpStatusCode(),
