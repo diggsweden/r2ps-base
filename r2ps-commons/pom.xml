@@ -69,12 +69,17 @@ SPDX-License-Identifier: EUPL-1.2
     <dependency>
       <groupId>se.digg.wallet</groupId>
       <artifactId>test-commons</artifactId>
+      <scope>test</scope>
     </dependency>
 
   </dependencies>
 
   <build>
     <plugins>
+      <plugin>
+        <groupId>org.sonatype.central</groupId>
+        <artifactId>central-publishing-maven-plugin</artifactId>
+      </plugin>
       <plugin>
         <groupId>net.revelc.code.formatter</groupId>
         <artifactId>formatter-maven-plugin</artifactId>

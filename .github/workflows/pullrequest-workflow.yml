@@ -1,0 +1,29 @@
+# SPDX-FileCopyrightText: 2025 Digg - Agency for Digital Government
+#
+# SPDX-License-Identifier: CC0-1.0
+name: Pull Request Workflow
+on:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  pr-checks:
+    uses: diggsweden/reusable-ci/.github/workflows/pullrequest-orchestrator.yml@c9d1aa14de12397376162378e5cb218e0750c550 # v2.1.1
+    secrets: inherit
+    permissions:
+      contents: read
+      packages: read
+      security-events: write
+    with:
+      project-type: maven
+      linters.megalint: false
+      linters.justmiselint: true
+      linters.commitlint: false
+      linters.licenselint: false
+  test:
+    needs: [pr-checks]
+    if: always()
+    permissions:
+      contents: read
+      packages: read
+    uses: ./.github/workflows/test.yml

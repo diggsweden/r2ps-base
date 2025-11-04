@@ -74,6 +74,7 @@ lint: lint-java lint-markdown lint-yaml lint-actions lint-shell lint-commit lint
 # Lint Java code (via Maven plugins)
 lint-java:
     @printf '{{yellow}}************ JAVA LINTING ***********{{nc}}\n'
+    @mvn {{maven_opts}} install -DskipTests
     @mvn {{maven_opts}} checkstyle:check pmd:check spotbugs:check
     @printf '{{green}}{{checkmark}} Java linting passed{{nc}}\n\n'
 
@@ -98,7 +99,7 @@ lint-yaml:
 # Lint GitHub Actions
 lint-actions:
     @printf '{{yellow}}************ ACTIONS LINTING ***********{{nc}}\n'
-    # @actionlint || exit 1
+    @actionlint || exit 1
     @printf '{{green}}{{checkmark}} Actions linting passed{{nc}}\n\n'
 
 # linter-name: Shell Scripts

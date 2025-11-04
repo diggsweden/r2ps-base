@@ -1,0 +1,21 @@
+# SPDX-FileCopyrightText: 2025 Digg - Agency for Digital Government
+#
+# SPDX-License-Identifier: CC0-1.0
+# R2PS Base - Multi-Module Maven Library
+# Publishes 4 artifacts to Maven Central:
+#   - r2ps-base-parent (parent POM for dependency management)
+#   - r2ps-commons (shared code)
+#   - r2ps-client (client implementation)
+#   - r2ps-server (server implementation)
+# Note: test-commons and integration-tests are not published
+artifacts:
+  - name: r2ps-base-multimodule
+    project-type: maven
+    working-directory: .
+    build-type: library
+    publish-to:
+      - maven-central
+    config:
+      java-version: 21
+      # Maven reactor will build all modules
+      # Only modules with central-release profile will be published

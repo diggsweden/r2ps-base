@@ -69,7 +69,7 @@ SPDX-License-Identifier: EUPL-1.2
     <nimbus.version>10.5</nimbus.version>
     <slf4j.version>2.0.17</slf4j.version>
     <jakarta.version>3.0.0</jakarta.version>
-    <digg.opaque.version>1.0.2-SNAPSHOT</digg.opaque.version>
+    <digg.opaque.version>0.8.0-SNAPSHOT</digg.opaque.version>
     <digg.hash2curve.version>0.8.0-SNAPSHOT</digg.hash2curve.version>
 
     <!-- Maven plugin versions -->
@@ -355,6 +355,19 @@ SPDX-License-Identifier: EUPL-1.2
             </execution>
           </executions>
         </plugin>
+
+        <!-- Maven Central Publishing (opt-in per module) -->
+        <plugin>
+          <groupId>org.sonatype.central</groupId>
+          <artifactId>central-publishing-maven-plugin</artifactId>
+          <version>${central-publishing.version}</version>
+          <extensions>true</extensions>
+          <configuration>
+            <checksums>all</checksums>
+            <skipPublishing>false</skipPublishing>
+            <publishingServerId>central</publishingServerId>
+          </configuration>
+        </plugin>
       </plugins>
     </pluginManagement>
 
@@ -386,17 +399,10 @@ SPDX-License-Identifier: EUPL-1.2
         </executions>
       </plugin>
 
-      <!-- Deployment -->
+      <!-- Maven Central Publishing (parent POM publishes as BOM) -->
       <plugin>
         <groupId>org.sonatype.central</groupId>
         <artifactId>central-publishing-maven-plugin</artifactId>
-        <version>${central-publishing.version}</version>
-        <extensions>true</extensions>
-        <configuration>
-          <checksums>all</checksums>
-          <skipPublishing>false</skipPublishing>
-          <publishingServerId>central</publishingServerId>
-        </configuration>
       </plugin>
     </plugins>
   </build>

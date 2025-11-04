@@ -12,6 +12,10 @@ paranoid = true      # Enable strict security checks and verification
 
 [tools]
 
+# Java
+java = "21"
+maven = "3.9.6"
+
 # Task runner
 "aqua:casey/just" = "1.43.0"
 
