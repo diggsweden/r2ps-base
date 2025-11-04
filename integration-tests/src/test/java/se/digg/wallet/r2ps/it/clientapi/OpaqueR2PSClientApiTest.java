@@ -86,13 +86,14 @@ import se.digg.wallet.r2ps.test.testutils.JSONUtils;
 @Slf4j
 class OpaqueR2PSClientApiTest {
 
+  static final String CLIENT_IDENTITY = "https://example.com/wallet/1";
+  static final String SERVER_IDENTITY = "https://example.com/oaque/server";
+
   static R2PSClientApi clientApi;
-  static ServiceTypeRegistry serviceTypeRegistry;
-  static SessionTaskRegistry sessionTaskRegistry;
-  static String clientIdentity;
-  static String serverIdentity;
+  static ServiceTypeRegistry serviceTypeRegistry = new ServiceTypeRegistry();
   static ClientPublicKeyRegistry clientPublicKeyRegistry;
-  static PakeSessionRegistry<ClientPakeRecord> clientPakeSessionRegistry;
+  static PakeSessionRegistry<ClientPakeRecord> clientPakeSessionRegistry =
+      new InMemoryPakeSessionRegistry<>();
   static String kid;
   static String kidHsm;
 
@@ -101,21 +102,17 @@ class OpaqueR2PSClientApiTest {
     if (Security.getProvider("BC") == null) {
       Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
     }
-    clientIdentity = "https://example.com/wallet/1";
-    serverIdentity = "https://example.com/oaque/server";
+
     kid =
         Base64.toBase64String(ECUtils.serializePublicKey(TestCredentials.p256keyPair.getPublic()));
     kidHsm =
         Base64.toBase64String(
             ECUtils.serializePublicKey(TestCredentials.walletHsmAccessP256keyPair.getPublic()));
-    serviceTypeRegistry = new ServiceTypeRegistry();
-
-    clientPakeSessionRegistry = new InMemoryPakeSessionRegistry<>();
 
     clientApi =
         new OpaqueR2PSClientApi(
             OpaqueR2PSConfiguration.builder()
-                .clientIdentity(clientIdentity)
+                .clientIdentity(CLIENT_IDENTITY)
                 .clientPakeSessionRegistry(clientPakeSessionRegistry)
                 .contextSessionDuration(Duration.ofMinutes(5))
                 .serviceExchangeConnector(createTestConnector())
@@ -125,14 +122,14 @@ class OpaqueR2PSClientApiTest {
                     kid,
                     TestCredentials.p256keyPair,
                     JWSAlgorithm.ES256,
-                    serverIdentity,
+                    SERVER_IDENTITY,
                     TestCredentials.serverOprfKeyPair.getPublic())
                 .addContext(
                     "hsm",
                     kidHsm,
                     TestCredentials.walletHsmAccessP256keyPair,
                     JWSAlgorithm.ES256,
-                    serverIdentity,
+                    SERVER_IDENTITY,
                     TestCredentials.serverOprfKeyPair.getPublic())
                 .build());
   }
@@ -148,17 +145,16 @@ class OpaqueR2PSClientApiTest {
    */
   private static ServiceExchangeConnector createTestConnector() throws Exception {
 
-    // Create a public key registry initiated for each test with no authorization codes.
     clientPublicKeyRegistry = new FileBackedClientPublicKeyRegistry(null);
     clientPublicKeyRegistry.registerClientPublicKey(
-        clientIdentity,
+        CLIENT_IDENTITY,
         ClientPublicKeyRecord.builder()
             .kid(kid)
             .publicKey(TestCredentials.p256keyPair.getPublic())
             .supportedContexts(List.of("test"))
             .build());
     clientPublicKeyRegistry.registerClientPublicKey(
-        clientIdentity,
+        CLIENT_IDENTITY,
         ClientPublicKeyRecord.builder()
             .kid(kidHsm)
             .publicKey(TestCredentials.walletHsmAccessP256keyPair.getPublic())
@@ -171,21 +167,20 @@ class OpaqueR2PSClientApiTest {
     serviceTypeHandlerList.add(
         new TestHsmServiceHandler(List.of("P-256", "P-384", "P-521"), List.of("hsm")));
 
-    sessionTaskRegistry = new SessionTaskRegistry();
+    SessionTaskRegistry sessionTaskRegistry = new SessionTaskRegistry();
     sessionTaskRegistry.registerSessionTask("sign", Duration.ofSeconds(10));
     sessionTaskRegistry.registerSessionTask("keyop", Duration.ofSeconds(5));
 
     ClientRecordRegistry clientRecordRegistry = new FileBackedClientRecordRegistry(null);
 
     final byte[] oprfSeed = OpaqueUtils.random(32);
-    log.info("Server OPRFSeed: {}", Hex.toHexString(oprfSeed));
 
     serviceTypeHandlerList.add(
         new OpaqueServiceHandler(
             List.of("hsm", "test"),
             new CodeMatchPinAuthorization(clientPublicKeyRegistry),
             OpaqueConfiguration.defaultConfiguration(),
-            serverIdentity,
+            SERVER_IDENTITY,
             oprfSeed,
             TestCredentials.serverOprfKeyPair,
             serverPakeSessionRegistry,
@@ -215,13 +210,15 @@ class OpaqueR2PSClientApiTest {
   }
 
   @Test
-  void testFailedLoginAttempt() throws Exception {
+  void loginFailsWithWrongPin() throws Exception {
+    // Arrange
     // Set authorization codes for PIN registration
-    clientPublicKeyRegistry.setAuthorizationCode(clientIdentity, kid, "123456".getBytes());
-    clientPublicKeyRegistry.setAuthorizationCode(clientIdentity, kidHsm, "987654321".getBytes());
+    clientPublicKeyRegistry.setAuthorizationCode(CLIENT_IDENTITY, kid, "123456".getBytes());
+    clientPublicKeyRegistry.setAuthorizationCode(CLIENT_IDENTITY, kidHsm, "987654321".getBytes());
 
     clientApi.registerPin("1234", "test", "123456".getBytes());
 
+    // Act & Assert
     // login with wrong PIN
     assertThrows(
         PakeAuthenticationException.class, () -> clientApi.createSession("111111", "test"));
@@ -230,8 +227,8 @@ class OpaqueR2PSClientApiTest {
   @Test
   void createKeyAndRemoteSignAndDH() throws Exception {
     // Set authorization codes for PIN registration
-    clientPublicKeyRegistry.setAuthorizationCode(clientIdentity, kid, "123456".getBytes());
-    clientPublicKeyRegistry.setAuthorizationCode(clientIdentity, kidHsm, "987654321".getBytes());
+    clientPublicKeyRegistry.setAuthorizationCode(CLIENT_IDENTITY, kid, "123456".getBytes());
+    clientPublicKeyRegistry.setAuthorizationCode(CLIENT_IDENTITY, kidHsm, "987654321".getBytes());
 
     // Register new PIN
     clientApi.registerPin("1234", "test", "123456".getBytes());
@@ -339,7 +336,7 @@ class OpaqueR2PSClientApiTest {
   @Test
   void remoteJwsSign() throws Exception {
     // Set authorization codes for PIN registration
-    clientPublicKeyRegistry.setAuthorizationCode(clientIdentity, kidHsm, "987654321".getBytes());
+    clientPublicKeyRegistry.setAuthorizationCode(CLIENT_IDENTITY, kidHsm, "987654321".getBytes());
 
     // Register new PIN
     clientApi.registerPin("1234", "hsm", "987654321".getBytes());

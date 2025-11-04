@@ -2,6 +2,8 @@ package se.digg.wallet.r2ps.client.jws;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.JWSObject;
 import com.nimbusds.jose.JWSSigner;
@@ -10,13 +12,15 @@ import com.nimbusds.jose.Payload;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.util.Base64URL;
 import java.security.KeyPair;
-import java.security.MessageDigest;
 import java.security.Security;
 import java.security.interfaces.ECPrivateKey;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import se.digg.wallet.r2ps.client.jws.pkds.HSPKDSAlgorithm;
 import se.digg.wallet.r2ps.client.jws.pkds.PKDSHeaderParam;
 import se.digg.wallet.r2ps.client.jws.pkds.PKDSKeyDerivation;
@@ -35,12 +39,10 @@ class HSECPkdsSignerTest {
   // Client keys
   static KeyPair clientKey;
   static JWK clientJwk;
-  static byte[] clientCertHash;
 
   // Server keys
   static KeyPair serverKey;
   static JWK serverJwk;
-  static byte[] serverCertHash;
 
   @BeforeAll
   static void setUp() throws Exception {
@@ -50,140 +52,87 @@ class HSECPkdsSignerTest {
     // Client keys
     clientKey = TestCredentials.p256keyPair;
     clientJwk = JSONUtils.getJWKfromPublicKey(clientKey.getPublic());
-    MessageDigest md = MessageDigest.getInstance("SHA-256");
-    clientCertHash = md.digest(TestCredentials.p256Certificate.getEncoded());
 
     // Server keys
     serverKey = TestCredentials.p256keyPair;
     serverJwk = JSONUtils.getJWKfromPublicKey(serverKey.getPublic());
-    md = MessageDigest.getInstance("SHA-256");
-    serverCertHash = md.digest(TestCredentials.serverCertificate.getEncoded());
   }
 
-  @Test
-  void testHS256PKDS() throws Exception {
+  private static Stream<Arguments> hspkdsTestProvider() {
 
-    final PKDSHeaderParam pkdsParam =
-        PKDSHeaderParam.builder()
-            .suite(PKDSSuite.ECDH_HKDF_SHA256)
-            .recipientPublicKey(PKDSPublicKey.builder().jwk(serverJwk).build())
-            .producerPublicKey(PKDSPublicKey.builder().jwk(clientJwk).build())
-            .build();
-
-    JWSSigner signer =
-        new HSECPkdsSigner(
-            HSPKDSAlgorithm.HS256_PKDS,
-            new PrivateKeyPKDSKeyDerivation((ECPrivateKey) clientKey.getPrivate()));
-
-    String payload =
-        StaticResources.OBJECT_MAPPER.writeValueAsString(
-            TestMessage.builder().message("Hello World!").build());
-    JWSHeader jwsHeader =
-        new JWSHeader.Builder(HSPKDSAlgorithm.HS256_PKDS.getAlg())
-            .customParam(HSECPkdsSigner.PKDS_HEADER_PARAM, pkdsParam.toJsonObject())
-            .build();
-    JWSObject jwsObject = new JWSObject(jwsHeader, new Payload(payload));
-    jwsObject.sign(signer);
-
-    log.info("Signed JWS using HS256_PKDS: {}", jwsObject.serialize());
-    log.info(
-        "Header:\n{}",
-        StaticResources.OBJECT_MAPPER
-            .writerWithDefaultPrettyPrinter()
-            .writeValueAsString(jwsObject.getHeader().toJSONObject()));
-    log.info(
-        "Payload:\n{}",
-        StaticResources.OBJECT_MAPPER
-            .writerWithDefaultPrettyPrinter()
-            .writeValueAsString(jwsObject.getPayload().toJSONObject()));
-    log.info("Signature:\n{}", jwsObject.getSignature());
+    return Stream.of(
+        Arguments.of("JWK HS256_PKDS", createPkdsHeaderParam(), HSPKDSAlgorithm.HS256_PKDS),
+        Arguments.of(
+            "JWK HS256_PKDS, with info salt and length",
+            createPkdsHeaderParamsWithInfoSaltAndLength(),
+            HSPKDSAlgorithm.HS256_PKDS),
+        Arguments.of("JWK HS384_PKDS", createPkdsHeaderParam(), HSPKDSAlgorithm.HS384_PKDS),
+        Arguments.of("JWK HS512_PKDS", createPkdsHeaderParam(), HSPKDSAlgorithm.HS512_PKDS));
   }
 
-  @Test
-  void testHSPKDSSign() throws Exception {
-
-    sighWithHSPKDS(
-        "JWK HS256_PKDS",
-        PKDSHeaderParam.builder()
-            .suite(PKDSSuite.ECDH_HKDF_SHA256)
-            .recipientPublicKey(PKDSPublicKey.builder().jwk(serverJwk).build())
-            .producerPublicKey(PKDSPublicKey.builder().jwk(clientJwk).build())
-            .build(),
-        HSPKDSAlgorithm.HS256_PKDS);
-
-    sighWithHSPKDS(
-        "JWK HS256_PKDS, with info salt and length",
-        PKDSHeaderParam.builder()
-            .suite(PKDSSuite.ECDH_HKDF_SHA256)
-            .recipientPublicKey(PKDSPublicKey.builder().jwk(serverJwk).build())
-            .producerPublicKey(PKDSPublicKey.builder().jwk(clientJwk).build())
-            .params(
-                PKDSParams.builder()
-                    .info(new Base64URL("info"))
-                    .salt(new Base64URL("salt"))
-                    .build())
-            .length(32)
-            .build(),
-        HSPKDSAlgorithm.HS256_PKDS);
-
-    sighWithHSPKDS(
-        "JWK HS384_PKDS",
-        PKDSHeaderParam.builder()
-            .suite(PKDSSuite.ECDH_HKDF_SHA256)
-            .recipientPublicKey(PKDSPublicKey.builder().jwk(serverJwk).build())
-            .producerPublicKey(PKDSPublicKey.builder().jwk(clientJwk).build())
-            .build(),
-        HSPKDSAlgorithm.HS384_PKDS);
-
-    sighWithHSPKDS(
-        "JWK HS512_PKDS",
-        PKDSHeaderParam.builder()
-            .suite(PKDSSuite.ECDH_HKDF_SHA256)
-            .recipientPublicKey(PKDSPublicKey.builder().jwk(serverJwk).build())
-            .producerPublicKey(PKDSPublicKey.builder().jwk(clientJwk).build())
-            .build(),
-        HSPKDSAlgorithm.HS512_PKDS);
+  private static PKDSHeaderParam createPkdsHeaderParam() {
+    return PKDSHeaderParam.builder()
+        .suite(PKDSSuite.ECDH_HKDF_SHA256)
+        .recipientPublicKey(PKDSPublicKey.builder().jwk(serverJwk).build())
+        .producerPublicKey(PKDSPublicKey.builder().jwk(clientJwk).build())
+        .build();
   }
 
-  void sighWithHSPKDS(String message, PKDSHeaderParam pkdsHeaderParam, HSPKDSAlgorithm algorithm)
+  private static PKDSHeaderParam createPkdsHeaderParamsWithInfoSaltAndLength() {
+    return PKDSHeaderParam.builder()
+        .suite(PKDSSuite.ECDH_HKDF_SHA256)
+        .recipientPublicKey(PKDSPublicKey.builder().jwk(serverJwk).build())
+        .producerPublicKey(PKDSPublicKey.builder().jwk(clientJwk).build())
+        .params(
+            PKDSParams.builder().info(new Base64URL("info")).salt(new Base64URL("salt")).build())
+        .length(32)
+        .build();
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("hspkdsTestProvider")
+  void testHSPKDSSign(
+      String testDescription, PKDSHeaderParam pkdsHeaderParam, HSPKDSAlgorithm algorithm)
       throws Exception {
-    log.info(message);
+
+    // Arrange
+    JWSSigner signer = createSigner(algorithm);
+    JWSObject jwsObject = createJwsObject(pkdsHeaderParam, algorithm);
+
+    // Act
+    jwsObject.sign(signer);
+    String signedJWS = jwsObject.serialize();
+
+    // Assert
+    assertNotNull(signedJWS);
+    assertEquals(3, signedJWS.split("\\.").length);
+
+    JWSVerifier verifier = createJwsVerifier(algorithm);
+    assertTrue(jwsObject.verify(verifier));
+  }
+
+  private JWSSigner createSigner(HSPKDSAlgorithm algorithm) throws JOSEException {
     PKDSKeyDerivation signerKeyDerivation =
         new PrivateKeyPKDSKeyDerivation((ECPrivateKey) clientKey.getPrivate());
-    JWSSigner signer = new HSECPkdsSigner(algorithm, signerKeyDerivation);
+    return new HSECPkdsSigner(algorithm, signerKeyDerivation);
+  }
 
-    String payload =
-        StaticResources.OBJECT_MAPPER.writeValueAsString(
-            TestMessage.builder().message("Hello World!").build());
+  private JWSObject createJwsObject(PKDSHeaderParam pkdsHeaderParam, HSPKDSAlgorithm algorithm)
+      throws JsonProcessingException {
     JWSHeader jwsHeader =
         new JWSHeader.Builder(algorithm.getAlg())
             .customParam(HSECPkdsSigner.PKDS_HEADER_PARAM, pkdsHeaderParam.toJsonObject())
             .build();
-    JWSObject jwsObject = new JWSObject(jwsHeader, new Payload(payload));
-    jwsObject.sign(signer);
-    String signedJWS = jwsObject.serialize();
+    Payload payload =
+        new Payload(
+            StaticResources.OBJECT_MAPPER.writeValueAsString(
+                TestMessage.builder().message("Hello World!").build()));
+    return new JWSObject(jwsHeader, payload);
+  }
 
-    assertNotNull(signedJWS);
-    assertEquals(3, signedJWS.split("\\.").length);
-
-    log.info("Signed JWS using HS256_PKDS: {}", signedJWS);
-    log.info(
-        "Header:\n{}",
-        StaticResources.OBJECT_MAPPER
-            .writerWithDefaultPrettyPrinter()
-            .writeValueAsString(jwsObject.getHeader().toJSONObject()));
-    log.info(
-        "Payload:\n{}",
-        StaticResources.OBJECT_MAPPER
-            .writerWithDefaultPrettyPrinter()
-            .writeValueAsString(jwsObject.getPayload().toJSONObject()));
-    log.info("Signature:\n{}", jwsObject.getSignature());
-
+  private JWSVerifier createJwsVerifier(HSPKDSAlgorithm algorithm) throws JOSEException {
     PKDSKeyDerivation verifierKeyDerivation =
         new PrivateKeyPKDSKeyDerivation((ECPrivateKey) serverKey.getPrivate());
-    JWSVerifier verifier = new HSECPkdsVerifier(algorithm, verifierKeyDerivation);
-    final boolean verify = jwsObject.verify(verifier);
-    log.info("Verified: {}", verify);
-    assertTrue(verify);
+    return new HSECPkdsVerifier(algorithm, verifierKeyDerivation);
   }
 }
