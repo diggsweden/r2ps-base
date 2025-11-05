@@ -17,5 +17,6 @@ artifacts:
       - maven-central
     config:
       java-version: 21
+      settings-path: .mvn/settings.xml
       # Maven reactor will build all modules
       # Only modules with central-release profile will be published
