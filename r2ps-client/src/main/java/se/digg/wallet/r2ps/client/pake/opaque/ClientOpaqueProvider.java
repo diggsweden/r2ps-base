@@ -14,7 +14,7 @@ import se.digg.crypto.opaque.error.DeserializationException;
 import se.digg.crypto.opaque.error.EvelopeRecoveryException;
 import se.digg.crypto.opaque.error.InvalidInputException;
 import se.digg.crypto.opaque.error.ServerAuthenticationException;
-import se.digg.wallet.r2ps.commons.exception.PakeSessionException;
+import se.digg.wallet.r2ps.commons.exception.PakeAuthenticationException;
 import se.digg.wallet.r2ps.commons.pake.opaque.PakeSessionRegistry;
 
 public class ClientOpaqueProvider {
@@ -31,29 +31,40 @@ public class ClientOpaqueProvider {
   }
 
   public RegistrationRequestResult createRegistrationRequest(byte[] pin)
-      throws DeriveKeyPairErrorException {
-    return clientOpaqueEntity.getOpaqueClient().createRegistrationRequest(pin);
+      throws PakeAuthenticationException {
+    try {
+      return clientOpaqueEntity.getOpaqueClient().createRegistrationRequest(pin);
+    } catch (DeriveKeyPairErrorException e) {
+      throw new PakeAuthenticationException("Error registering PIN: " + e.getMessage(), e);
+    }
   }
 
   public RegistrationRecord finalizeRegistrationRequest(
       byte[] pin, byte[] blind, byte[] registrationResponse, String serverIdentity)
-      throws InvalidInputException, DeriveKeyPairErrorException, DeserializationException {
-    final RegistrationFinalizationResult registrationFinalizationResult =
-        clientOpaqueEntity
-            .getOpaqueClient()
-            .finalizeRegistrationRequest(
-                pin,
-                blind,
-                registrationResponse,
-                serverIdentity.getBytes(StandardCharsets.UTF_8),
-                clientOpaqueEntity.getClientIdentity().getBytes(StandardCharsets.UTF_8));
-    return registrationFinalizationResult.registrationRecord();
+      throws PakeAuthenticationException {
+    try {
+      RegistrationFinalizationResult registrationFinalizationResult =
+          clientOpaqueEntity
+              .getOpaqueClient()
+              .finalizeRegistrationRequest(
+                  pin,
+                  blind,
+                  registrationResponse,
+                  serverIdentity.getBytes(StandardCharsets.UTF_8),
+                  clientOpaqueEntity.getClientIdentity().getBytes(StandardCharsets.UTF_8));
+      return registrationFinalizationResult.registrationRecord();
+    } catch (DeserializationException | DeriveKeyPairErrorException | InvalidInputException e) {
+      throw new PakeAuthenticationException("Error registering PIN: " + e.getMessage(), e);
+    }
   }
 
   public KE1 authenticationEvaluate(byte[] pin, ClientState clientState)
-      throws PakeSessionException, DeriveKeyPairErrorException {
-    final KE1 ke1 = clientOpaqueEntity.getOpaqueClient().generateKe1(pin, clientState);
-    return ke1;
+      throws PakeAuthenticationException {
+    try {
+      return clientOpaqueEntity.getOpaqueClient().generateKe1(pin, clientState);
+    } catch (DeriveKeyPairErrorException e) {
+      throw new PakeAuthenticationException("Failed to create session: " + e.getMessage(), e);
+    }
   }
 
   public KE3 authenticationFinalize(
@@ -64,19 +75,25 @@ public class ClientOpaqueProvider {
       ClientState clientState,
       String serverIdentity,
       String requestedTask)
-      throws InvalidInputException,
-      EvelopeRecoveryException,
-      ServerAuthenticationException,
-      DeriveKeyPairErrorException,
-      DeserializationException {
-    final ClientKeyExchangeResult clientKeyExchangeResult =
-        clientOpaqueEntity
-            .getOpaqueClient()
-            .generateKe3(
-                clientOpaqueEntity.getClientIdentity().getBytes(StandardCharsets.UTF_8),
-                serverIdentity.getBytes(StandardCharsets.UTF_8),
-                ke2,
-                clientState);
+      throws PakeAuthenticationException {
+    final ClientKeyExchangeResult clientKeyExchangeResult;
+    try {
+      clientKeyExchangeResult =
+          clientOpaqueEntity
+              .getOpaqueClient()
+              .generateKe3(
+                  clientOpaqueEntity.getClientIdentity().getBytes(StandardCharsets.UTF_8),
+                  serverIdentity.getBytes(StandardCharsets.UTF_8),
+                  ke2,
+                  clientState);
+    } catch (EvelopeRecoveryException
+        | DeriveKeyPairErrorException
+        | DeserializationException
+        | ServerAuthenticationException
+        | InvalidInputException e) {
+      throw new PakeAuthenticationException(
+          "Authentication failed with the presented PIN and client key: %s" + e.getMessage(), e);
+    }
 
     ClientPakeRecord pakeSessionRecord =
         ClientPakeRecord.builder()
