@@ -158,7 +158,7 @@ lint-secrets:
 # Format Java code with spotless
 format:
     @printf '{{yellow}}************ FORMATTING JAVA ***********{{nc}}\n'
-    @mvn spotless:apply
+    @mvn formatter:format
     @printf '{{green}}{{checkmark}} Java code formatted{{nc}}\n\n'
 
 # ** Run tests (Maven verify)
