@@ -7,9 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.6.1-SNAPSHOT] - 2025-11-05
 
+### Added
+
+- Add mvn settings
+
 ### Changed
 
 - Adjust pom setup
+
 
 ## [0.6.0-SNAPSHOT] - 2025-11-05
 
