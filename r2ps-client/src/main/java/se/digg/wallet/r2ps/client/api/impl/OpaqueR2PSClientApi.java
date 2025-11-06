@@ -14,8 +14,8 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.bouncycastle.util.encoders.Hex;
 import se.digg.crypto.opaque.OpaqueUtils;
+import se.digg.crypto.opaque.client.ClientKeyExchangeResult;
 import se.digg.crypto.opaque.client.ClientState;
-import se.digg.crypto.opaque.client.OpaqueClient;
 import se.digg.crypto.opaque.client.RegistrationRequestResult;
 import se.digg.crypto.opaque.dto.KE1;
 import se.digg.crypto.opaque.dto.KE3;
@@ -31,7 +31,6 @@ import se.digg.wallet.r2ps.client.api.impl.strategy.PinRegistrationStrategy;
 import se.digg.wallet.r2ps.client.jwe.JweCodecFactory;
 import se.digg.wallet.r2ps.client.pake.PinHardening;
 import se.digg.wallet.r2ps.client.pake.impl.ECPrivateKeyDHPinHardening;
-import se.digg.wallet.r2ps.client.pake.opaque.ClientOpaqueEntity;
 import se.digg.wallet.r2ps.client.pake.opaque.ClientOpaqueProvider;
 import se.digg.wallet.r2ps.client.pake.opaque.ClientPakeRecord;
 import se.digg.wallet.r2ps.commons.StaticResources;
@@ -51,6 +50,7 @@ import se.digg.wallet.r2ps.commons.exception.PakeSessionException;
 import se.digg.wallet.r2ps.commons.exception.ServiceRequestException;
 import se.digg.wallet.r2ps.commons.exception.ServiceResponseException;
 import se.digg.wallet.r2ps.commons.jwe.JweCodec;
+import se.digg.wallet.r2ps.commons.pake.opaque.PakeSessionRegistry;
 import se.digg.wallet.r2ps.commons.utils.ServiceExchangeBuilder;
 
 @Slf4j
@@ -61,6 +61,7 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
   private final ServiceExchangeConnector connector;
   private final ServiceTypeRegistry serviceTypeRegistry;
   private final JweCodecFactory jweCodecFactory;
+  private final PakeSessionRegistry<ClientPakeRecord> sessionRegistry;
 
   /** A map keyed by context, holding info about that context */
   private final Map<String, ClientContextConfiguration> contextInfoMap;
@@ -72,11 +73,9 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
 
   public OpaqueR2PSClientApi(OpaqueR2PSConfiguration configuration) {
     this.clientId = configuration.getClientIdentity();
-    OpaqueClient opaqueClient = configuration.getOpaqueConfiguration().getOpaqueClient();
-    ClientOpaqueEntity clientOpaqueEntity =
-        new ClientOpaqueEntity(configuration.getClientIdentity(), opaqueClient);
     this.opaqueProvider =
-        new ClientOpaqueProvider(clientOpaqueEntity, configuration.getClientPakeSessionRegistry());
+        new ClientOpaqueProvider(configuration.getOpaqueConfiguration().getOpaqueClient());
+    this.sessionRegistry = configuration.getClientPakeSessionRegistry();
     this.connector = configuration.getServiceExchangeConnector();
     this.serviceTypeRegistry = configuration.getServiceTypeRegistry();
     this.contextInfoMap = configuration.getContextConfigurationMap();
@@ -114,7 +113,7 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
           evaluateResponse, context, clientContextConfiguration, jweCodec, task, requestedDuration);
     } catch (ServiceResponseException | PakeSessionException | PakeAuthenticationException e) {
       if (pakeSessionId != null) {
-        opaqueProvider.getSessionRegistry().deletePakeSession(pakeSessionId);
+        sessionRegistry.deletePakeSession(pakeSessionId);
       }
       throw e;
     }
@@ -156,15 +155,25 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
     byte[] ke2 = evaluateResponse.responseData();
     String pakeSessionId = evaluateResponse.pakeSessionId();
 
-    KE3 ke3 =
+    ClientKeyExchangeResult clientKeyExchangeResult =
         opaqueProvider.authenticationFinalize(
             ke2,
-            pakeSessionId,
-            context,
-            clientContextConfiguration.getKid(),
             evaluateResponse.clientState(),
             clientContextConfiguration.getServerIdentity(),
-            task);
+            clientId);
+
+    sessionRegistry.addPakeSession(
+        ClientPakeRecord.builder()
+            .clientId(clientId)
+            .pakeSessionId(pakeSessionId)
+            .kid(clientContextConfiguration.getKid())
+            .context(context)
+            .requestedSessionTaskId(task)
+            .sessionKey(clientKeyExchangeResult.sessionKey())
+            .exportKey(clientKeyExchangeResult.exportKey())
+            .build());
+
+    KE3 ke3 = clientKeyExchangeResult.ke3();
 
     PakeResponsePayload finalizeResponsePayload =
         performPakeFinalization(
@@ -180,11 +189,10 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
       throw new PakeSessionException("No session expiration time from server. Abort session");
     }
 
-    ClientPakeRecord pakeSession =
-        opaqueProvider.getSessionRegistry().getPakeSession(pakeSessionId);
+    ClientPakeRecord pakeSession = sessionRegistry.getPakeSession(pakeSessionId);
     pakeSession.setExpirationTime(finalizeResponsePayload.getSessionExpirationTime());
     pakeSession.setSessionTaskId(finalizeResponsePayload.getTask());
-    opaqueProvider.getSessionRegistry().updatePakeSession(pakeSession);
+    sessionRegistry.updatePakeSession(pakeSession);
 
     return finalizeResponsePayload;
   }
@@ -195,13 +203,11 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
       log.debug("The context {} is not registered in the context registry.", context);
       throw new PakeSessionException(
           String.format(
-              "Failed to delete context session for context '%s' No such context", context));
+              "Failed to delete context session for context " + "'%s' No such context", context));
     }
     final ClientContextConfiguration clientContextConfiguration = contextInfoMap.get(context);
     final List<ClientPakeRecord> pakeSession =
-        opaqueProvider
-            .getSessionRegistry()
-            .getPakeSessions(clientId, clientContextConfiguration.getKid(), context);
+        sessionRegistry.getPakeSessions(clientId, clientContextConfiguration.getKid(), context);
     // Attempting to delete sessions from local registry
     if (!pakeSession.isEmpty()) {
       for (ClientPakeRecord clientPakeRecord : pakeSession) {
@@ -209,7 +215,7 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
             "Deleting session for context {} with session id {}",
             context,
             clientPakeRecord.getPakeSessionId());
-        opaqueProvider.getSessionRegistry().deletePakeSession(clientPakeRecord.getPakeSessionId());
+        sessionRegistry.deletePakeSession(clientPakeRecord.getPakeSessionId());
       }
     } else {
       log.debug("No active session for context {}. Nothing to delete", context);
@@ -228,15 +234,14 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
     log.debug("Deleting session with session id {}", sessionId);
 
     // fetching session because we need the context
-    final ClientPakeRecord pakeSession =
-        opaqueProvider.getSessionRegistry().getPakeSession(sessionId);
+    final ClientPakeRecord pakeSession = sessionRegistry.getPakeSession(sessionId);
     if (pakeSession == null) {
       log.debug("Session {} is not present", sessionId);
       return;
     }
     String context = pakeSession.getContext();
 
-    opaqueProvider.getSessionRegistry().deletePakeSession(sessionId);
+    sessionRegistry.deletePakeSession(sessionId);
     log.debug("Deleted session {} for context {} from local registry", sessionId, context);
 
     try {
@@ -310,7 +315,8 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
             hardenedPin,
             pinCredentialResponse.blind(),
             pinCredentialResponse.responseData(),
-            clientContextConfiguration.getServerIdentity());
+            clientContextConfiguration.getServerIdentity(),
+            clientId);
 
     performPakeFinalization(
         context,
@@ -342,8 +348,7 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
     log.debug("Created new session for context {} with old PIN", context);
 
     JweCodec jweCodec =
-        jweCodecFactory.forUserAuthentication(
-            opaqueProvider.getSessionRegistry().getPakeSession(pakeSessionId));
+        jweCodecFactory.forUserAuthentication(sessionRegistry.getPakeSession(pakeSessionId));
 
     final byte[] hPin = hardenPin(pin, clientContextConfiguration);
 
@@ -397,7 +402,8 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
             hardenedPin,
             pinCredentialResponse.blind(),
             pinCredentialResponse.responseData(),
-            clientContextConfiguration.getServerIdentity());
+            clientContextConfiguration.getServerIdentity(),
+            clientId);
 
     performPakeFinalization(
         context,
@@ -429,8 +435,7 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
     }
 
     JweCodec jweCodec =
-        jweCodecFactory.forUserAuthentication(
-            opaqueProvider.getSessionRegistry().getPakeSession(sessionId));
+        jweCodecFactory.forUserAuthentication(sessionRegistry.getPakeSession(sessionId));
 
     return requestService(
         serviceType, payload, context, sessionId, jweCodec, clientContextConfiguration);
@@ -614,8 +619,8 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
       } else {
         throw new ServiceResponseException(
             String.format(
-                "Service request of type '%s' under context '%s' failed with http code %d, error"
-                    + " code %s and error message: %s",
+                "Service request of type '%s' under context '%s' failed with http code %d, "
+                    + "error code %s and error message: %s",
                 serviceTypeId,
                 context,
                 result.httpStatusCode(),

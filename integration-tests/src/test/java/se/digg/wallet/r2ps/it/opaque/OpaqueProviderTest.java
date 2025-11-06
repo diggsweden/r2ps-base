@@ -1,12 +1,13 @@
 package se.digg.wallet.r2ps.it.opaque;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+
 import java.nio.charset.StandardCharsets;
 import java.security.Security;
 import java.time.Duration;
 import org.bouncycastle.crypto.digests.SHA256Digest;
 import org.bouncycastle.jce.ECNamedCurveTable;
 import org.bouncycastle.util.encoders.Base64;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import se.digg.crypto.hashtocurve.data.HashToCurveProfile;
@@ -35,7 +36,6 @@ import se.digg.crypto.opaque.dto.RegistrationResponse;
 import se.digg.crypto.opaque.server.OpaqueServer;
 import se.digg.crypto.opaque.server.ServerState;
 import se.digg.crypto.opaque.server.impl.DefaultOpaqueServer;
-import se.digg.wallet.r2ps.client.pake.opaque.ClientOpaqueEntity;
 import se.digg.wallet.r2ps.client.pake.opaque.ClientOpaqueProvider;
 import se.digg.wallet.r2ps.client.pake.opaque.ClientPakeRecord;
 import se.digg.wallet.r2ps.commons.dto.servicetype.ServiceTypeRegistry;
@@ -64,11 +64,12 @@ class OpaqueProviderTest {
   static String kid;
 
   @BeforeAll
-  static void init() throws Exception {
+  static void init() {
 
     if (Security.getProvider("BC") == null) {
       Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
     }
+
     HashFunctions sha256hash =
         new HashFunctions(
             SHA256Digest.newInstance(), new ArgonStretch(ArgonStretch.ARGON_PROFILE_DEFAULT));
@@ -89,12 +90,6 @@ class OpaqueProviderTest {
     kid =
         Base64.toBase64String(ECUtils.serializePublicKey(TestCredentials.p256keyPair.getPublic()));
 
-    ClientOpaqueEntity clientOpaqueEntity =
-        ClientOpaqueEntity.builder()
-            .opaqueClient(opaqueClient)
-            .clientIdentity(clientIdentity)
-            .build();
-
     ServerOpaqueEntity serverOpaqueEntity =
         ServerOpaqueEntity.builder()
             .opaqueServer(opaqueServer)
@@ -106,13 +101,12 @@ class OpaqueProviderTest {
                 ECUtils.serializePublicKey(TestCredentials.serverOprfKeyPair.getPublic()))
             .build();
 
-    PakeSessionRegistry<ClientPakeRecord> clientPakeSessionRegistry =
-        new InMemoryPakeSessionRegistry<>();
     PakeSessionRegistry<ServerPakeRecord> serverPakeSessionRegistry =
         new InMemoryPakeSessionRegistry<>();
+
     clientRecordRegistry = new FileBackedClientRecordRegistry(null);
 
-    clientOpaqueProvider = new ClientOpaqueProvider(clientOpaqueEntity, clientPakeSessionRegistry);
+    clientOpaqueProvider = new ClientOpaqueProvider(opaqueClient);
     serverOpaqueProvider =
         new ServerOpaqueProvider(
             serverOpaqueEntity,
@@ -138,7 +132,8 @@ class OpaqueProviderTest {
         serverOpaqueProvider.registrationResponse(registrationRequest, kid);
     final RegistrationRecord registrationRecord =
         clientOpaqueProvider.finalizeRegistrationRequest(
-            pin, blind, registrationResponse.getEncoded(), serverIdentity);
+            pin, blind, registrationResponse.getEncoded(), serverIdentity, clientIdentity);
+
     serverOpaqueProvider.registrationFinalize(clientIdentity, kid, registrationRecord.getEncoded());
 
     // Client PIN is registered. Let's authenticate
@@ -147,24 +142,28 @@ class OpaqueProviderTest {
     final EvaluationResponseResult evalResponse =
         serverOpaqueProvider.evaluateAuthRequest(ke1.getEncoded(), clientIdentity, kid, context);
     final String pakeSessionId = evalResponse.pakeSessionId();
-    final KE3 ke3 =
+
+    ClientKeyExchangeResult finalizeResult =
         clientOpaqueProvider.authenticationFinalize(
-            evalResponse.ke2().getEncoded(),
-            pakeSessionId,
-            context,
-            kid,
-            clientState,
-            serverIdentity,
-            null);
+            evalResponse.ke2().getEncoded(), clientState, serverIdentity, clientIdentity);
+
+    ClientPakeRecord clientPakeRecord = ClientPakeRecord.builder()
+        .clientId(clientIdentity)
+        .pakeSessionId(pakeSessionId)
+        .kid(kid)
+        .context(context)
+        .sessionKey(finalizeResult.sessionKey())
+        .exportKey(finalizeResult.exportKey())
+        .build();
+
+    KE3 ke3 = finalizeResult.ke3();
+
     serverOpaqueProvider.finalizeAuthRequest(ke3.getEncoded(), pakeSessionId);
 
-    final ClientPakeRecord clientPakeRecord =
-        clientOpaqueProvider.getSessionRegistry().getPakeSession(pakeSessionId);
     final ServerPakeRecord serverPakeRecord =
         serverOpaqueProvider.getPakeSessionRegistry().getPakeSession(pakeSessionId);
 
-    Assertions.assertArrayEquals(
-        serverPakeRecord.getSessionKey(), clientPakeRecord.getSessionKey());
+    assertArrayEquals(serverPakeRecord.getSessionKey(), clientPakeRecord.getSessionKey());
   }
 
   @Test
@@ -221,6 +220,6 @@ class OpaqueProviderTest {
     final byte[] sessionKey =
         opaqueServer.serverFinish(clientKeyExchangeResult.ke3().getEncoded(), serverState);
 
-    Assertions.assertArrayEquals(sessionKey, clientKeyExchangeResult.sessionKey());
+    assertArrayEquals(sessionKey, clientKeyExchangeResult.sessionKey());
   }
 }
