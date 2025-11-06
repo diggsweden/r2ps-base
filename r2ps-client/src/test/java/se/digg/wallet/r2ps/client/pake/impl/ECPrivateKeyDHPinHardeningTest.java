@@ -28,7 +28,6 @@ class ECPrivateKeyDHPinHardeningTest {
     PinHardening pinSeeder =
         new ECPrivateKeyDHPinHardening(HashToCurveProfile.P256_XMD_SHA_256_SSWU_RO_);
     final byte[] seededPin = pinSeeder.process(pin, TestCredentials.p256keyPair.getPrivate(), 32);
-    log.info("Seeded PIN 123456 using P256: {}", Hex.toHexString(seededPin));
 
     assertEquals(
         "e784ca50762b11f22d07cd61b5388a692faec4159080c8de6ac98567a69eb685",
