@@ -138,7 +138,7 @@ public class OpaqueServiceHandler implements ServiceTypeHandler {
                 clientPublicKeyRecord.getKid(),
                 serviceRequest.getClientID());
         pinAuthorization.clearAuthorization(
-            clientPublicKeyRecord.getKid(), serviceRequest.getClientID());
+            serviceRequest.getClientID(), clientPublicKeyRecord.getKid());
         if (!match) {
           throw new ServiceRequestHandlingException(
               "Provided authorization code is invalid", ErrorCode.ACCESS_DENIED);
