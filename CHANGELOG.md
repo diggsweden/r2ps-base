@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.6.1-SNAPSHOT] - 2025-11-05
+## [0.6.1-SNAPSHOT] - 2025-11-10
 
 ### Added
 
@@ -13,7 +13,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Merge pull request #10 from diggsweden/refactorOpaqueProvider
+- Refactor ClientOpaqueProvider
+- Merge pull request #8 from diggsweden/refactorTests
+- Refactor client test
+- Merge pull request #9 from diggsweden/sourcesAlways
+- Merge pull request #7 from diggsweden/refactorClientApi
+- Introduce strategy pattern for pake finalize
+- Refactor create session
+- Refactor general service request
+- Create separate changePin
+- Create separate registerPin
+- Merge pull request #6 from diggsweden/formatter
 - Adjust pom setup
+
+### Fixed
+
+- Correct mixed up parameters
+- Always include sources and docs in build
+- Use maven-formatter-plugin in just-script
 
 
 ## [0.6.0-SNAPSHOT] - 2025-11-05
