@@ -66,6 +66,7 @@ SPDX-License-Identifier: EUPL-1.2
     <bouncycastle.version>1.82</bouncycastle.version>
     <jackson.version>2.20.0</jackson.version>
     <junit.jupiter.version>5.12.2</junit.jupiter.version>
+    <assertj.version>3.27.6</assertj.version>
     <lombok.version>1.18.42</lombok.version>
     <nimbus.version>10.5</nimbus.version>
     <slf4j.version>2.0.17</slf4j.version>
@@ -161,6 +162,12 @@ SPDX-License-Identifier: EUPL-1.2
         <groupId>org.slf4j</groupId>
         <artifactId>slf4j-simple</artifactId>
         <version>${slf4j.version}</version>
+        <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.assertj</groupId>
+        <artifactId>assertj-core</artifactId>
+        <version>${assertj.version}</version>
         <scope>test</scope>
       </dependency>
       <dependency>
