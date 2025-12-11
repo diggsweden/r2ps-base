@@ -8,7 +8,7 @@ permissions:
   contents: read
 jobs:
   pr-checks:
-    uses: diggsweden/reusable-ci/.github/workflows/pullrequest-orchestrator.yml@2085025916a0aa1dd6b39bb9f1c0f665ff4e6b55 # v2.2.1
+    uses: diggsweden/reusable-ci/.github/workflows/pullrequest-orchestrator.yml@e29145e720cef0b86ef147c72c2d001b5ac6c8b9 # v2.4.2
     secrets: inherit
     permissions:
       contents: read

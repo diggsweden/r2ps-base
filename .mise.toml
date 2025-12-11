@@ -2,31 +2,28 @@
 #
 # SPDX-License-Identifier: CC0-1.0
 
-# Tool versions for mise (https://mise.jdx.dev/)
-# Install all tools: mise install
-# Activate in shell: eval "$(mise activate bash)"
-
 [settings]
 experimental = true
-paranoid = true      # Enable strict security checks and verification
+paranoid = true
+
+[env]
+HTTP_PROXY = "{{ get_env(name='HTTP_PROXY', default='') }}"
+HTTPS_PROXY = "{{ get_env(name='HTTPS_PROXY', default='') }}"
+NO_PROXY = "{{ get_env(name='NO_PROXY', default='') }}"
+http_proxy = "{{ get_env(name='http_proxy', default='') }}"
+https_proxy = "{{ get_env(name='https_proxy', default='') }}"
+no_proxy = "{{ get_env(name='no_proxy', default='') }}"
+PIP_INDEX_URL = "{{ get_env(name='PIP_INDEX_URL', default='') }}"
 
 [tools]
-
-# Java
-java = "21"
-maven = "3.9.6"
-
-# Task runner
+java = "temurin-21"
+maven = "3.9"
 "aqua:casey/just" = "1.43.0"
-
-# Linters
-"aqua:rhysd/actionlint" = "v1.7.8"           # GitHub Actions linter
-"aqua:koalaman/shellcheck" = "v0.10.0"       # Shell script linter  
-"aqua:mvdan/sh" = "v3.10.0"                  # Shell formatter (shfmt)
-"ubi:rvben/rumdl" = "v0.0.162"               # Markdown linter
-"aqua:google/yamlfmt" = "v0.19.0"            # YAML formatter
-"aqua:zricethezav/gitleaks" = "v8.28.0"      # Secret scanner
-"aqua:siderolabs/conform" = "v0.1.0-alpha.30" # Commit linter
-
-# License compliance (can also use pip install reuse)
-# For now using container for REUSE as it's already in justfile
+"aqua:rhysd/actionlint" = "v1.7.8"
+"aqua:siderolabs/conform" = "v0.1.0-alpha.30"
+"aqua:zricethezav/gitleaks" = "v8.29.1"
+"ubi:rvben/rumdl" = "v0.0.173"
+"aqua:koalaman/shellcheck" = "v0.11.0"
+"aqua:mvdan/sh" = "v3.12.0"
+"aqua:google/yamlfmt" = "v0.20.0"
+"pipx:reuse" = "6.2.0"

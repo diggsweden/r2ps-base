@@ -5,9 +5,12 @@ This guide outlines core essentials for developing in this project.
 ## Table of Contents
 
 - [Setup and Configuration](#setup-and-configuration)
+  - [Prerequisites](#prerequisites)
+  - [Quick Start](#quick-start)
   - [IDE Setup](#ide-setup)
   - [Consuming SNAPSHOTS](#consuming-snapshots-from-maven-central)
 - [Development Workflow](#development-workflow)
+  - [Available Commands](#available-commands)
   - [Testing and Verification](#testing-format-and-lint)
   - [Documentation](#documentation)
   - [Pull Request Process](#pull-request-workflow)
@@ -17,6 +20,24 @@ This guide outlines core essentials for developing in this project.
   - [Troubleshooting](#troubleshooting)
 
 ## Setup and Configuration
+
+### Prerequisites
+
+- [mise](https://mise.jdx.dev/) - Tool version manager
+- [just](https://github.com/casey/just) - Command runner (installed via mise)
+
+### Quick Start
+
+```shell
+# Install all development tools
+mise install
+
+# Setup shared linting tools
+just setup-devtools
+
+# Run all quality checks
+just verify
+```
 
 ### IDE Setup
 
@@ -49,7 +70,7 @@ This guide outlines core essentials for developing in this project.
    - Click the built-in Google Style Check
 
 Note: There might be slight implementation details in how Intellij, VS Code and the maven formatter plugin handles rules.
-Noteably, builder patterns are not handled, so if these are formatted in IDE directly, at least maven formatter plugin won't touch them.
+Notably, builder patterns are not handled, so if these are formatted in IDE directly, at least maven formatter plugin won't touch them.
 
 ### Consuming SNAPSHOTS from Maven Central
 
@@ -73,49 +94,59 @@ Configure your pom.xml with:
 
 ## Development Workflow
 
+### Available Commands
+
+Run `just` to see all available commands. Key commands:
+
+| Command | Description |
+|---------|-------------|
+| `just verify` | Run all checks (lint + test) |
+| `just lint-all` | Run all linters |
+| `just lint-fix` | Auto-fix linting issues |
+| `just test` | Run tests (mvn verify) |
+| `just build` | Build project |
+| `just clean` | Clean build artifacts |
+
+#### Linting Commands
+
+| Command | Tool | Description |
+|---------|------|-------------|
+| `just lint-commits` | conform | Validate commit messages |
+| `just lint-secrets` | gitleaks | Scan for secrets |
+| `just lint-yaml` | yamlfmt | Lint YAML files |
+| `just lint-markdown` | rumdl | Lint markdown files |
+| `just lint-shell` | shellcheck | Lint shell scripts |
+| `just lint-shell-fmt` | shfmt | Check shell formatting |
+| `just lint-actions` | actionlint | Lint GitHub Actions |
+| `just lint-license` | reuse | Check license compliance |
+| `just lint-xml` | xmllint | Validate XML files |
+| `just lint-java` | Maven | Run all Java linters |
+| `just lint-java-checkstyle` | checkstyle | Java style checks |
+| `just lint-java-pmd` | pmd | Java static analysis |
+| `just lint-java-spotbugs` | spotbugs | Java bug detection |
+| `just lint-java-fmt` | formatter | Check Java formatting |
+
+#### Fix Commands
+
+| Command | Description |
+|---------|-------------|
+| `just lint-yaml-fix` | Fix YAML formatting |
+| `just lint-markdown-fix` | Fix markdown formatting |
+| `just lint-shell-fmt-fix` | Fix shell formatting |
+| `just lint-java-fmt-fix` | Fix Java formatting |
+
 ### Testing, Format and Lint
 
-#### Prerequisites
-
-**Important**: Development tools require [mise](https://mise.jdx.dev/) to be installed.
-
-If not added to your shell's automatic initialization (e.g., `.bashrc`, `.zshrc`), run:
-
-```shell
-eval "$(mise activate)"
-```
-
-#### Quick Start (Recommended)
-
-Format code:
-
-```shell
-just format
-```
-
-Run all quality checks and tests:
+Run all verification:
 
 ```shell
 just verify
 ```
 
-This will run:
-
-- Code formatter (Google Java Style via Maven formatter plugin)
-- All linters (Java, Markdown, YAML, Actions, Shell, Secrets)
-- License compliance checks
-- Maven tests
-
-Run all quality check:
+Or run Maven directly:
 
 ```shell
-just lint
-```
-
-Autofix what can be fixed:
-
-```shell
-just lint-fix
+mvn clean verify
 ```
 
 ### Documentation
@@ -136,108 +167,45 @@ View documentation in your browser:
 
 When submitting a PR, CI will automatically run several checks. To avoid surprises, run these checks locally first.
 
-#### Prerequisites
-
-Install [mise](https://mise.jdx.dev/) - a tool version manager.
-After installation, follow the instructions on the mise install page to activate it in your shell, or restart your shell.
-
-**Note**: If you haven't restarted your shell after installing mise, you may need to manually activate it:
-
-```shell
-eval "$(mise activate zsh)"   # for zsh
-eval "$(mise activate bash)"  # for bash
-eval "$(mise activate fish)"  # for fish
-```
-
 #### Running Code Quality Checks Locally
 
-0. List all just runs:
-
-   ```shell
-   just
-   ```
-
-1. Install all development tools:
-
-   ```shell
-   just install-dev-deps
-   ```
-
-   Or directly with mise:
-
-   ```shell
-   mise install
-   ```
-
-2. Run all quality checks:
-
-   ```shell
-   just verify
-   ```
-
-3. Fix any identified issues (many can be auto-fixed):
-
-   ```shell
-   just lint-fix
-   ```
-
-4. Update your PR with fixes
-5. Verify CI passes in the updated PR
-
-#### Available Just Commands
-
-View all available commands:
-
 ```shell
-just
+# Run all checks
+just verify
+
+# Or run linting only
+just lint-all
+
+# Auto-fix where possible
+just lint-fix
 ```
-
-Common commands:
-
-- `just install` - Install all development tools via mise
-- `just format` - Format Java code (Google Java Style)
-- `just verify` - Run all quality checks (linting + tests)
-- `just verify-deps` - Check if all tools are installed
-- `just lint` - Run all linters
-- `just lint-java` - Lint Java code (Checkstyle, PMD, SpotBugs)
-- `just lint-markdown` - Lint Markdown files
-- `just lint-yaml` - Lint YAML files
-- `just lint-actions` - Lint GitHub Actions workflows
-- `just lint-shell` - Lint shell scripts
-- `just lint-commit` - Check commit messages
-- `just lint-secrets` - Scan for secrets
-- `just lint-license` - Check license compliance
-- `just test` - Run Maven tests
-- `just lint-fix` - Auto-fix linting issues where possible
-- `just clean` - Clean build artifacts
 
 #### Quality Check Details
 
-- **Java Formatting**: Maven formatter plugin with Google Java Style
-  - Configuration: `development/format/eclipse-java-google-style.xml`
-  - Runs automatically during `mvn verify`
-- **Java Linting**: Checkstyle, PMD, and SpotBugs via Maven plugins
-  - Checkstyle: Configured to fail only on errors (warnings are reported but don't fail the build)
-  - Configuration: `development/lint/google_checks.xml`
-  - Runtime version: Checkstyle 10.26.1
-- **Markdown Linting**: rumdl for Markdown files
-- **YAML Linting**: yamlfmt for YAML files
-- **GitHub Actions Linting**: actionlint for workflow files
-- **Shell Script Linting**: shellcheck and shfmt for shell scripts
+- **Java Linting**: Checkstyle, PMD, SpotBugs
+- **General Linting**: Shell, YAML, Markdown, GitHub Actions, XML
+- **Security**: Secret scanning with gitleaks
 - **License Compliance**: REUSE tool ensures proper copyright information
 - **Commit Structure**: Conform checks commit messages for changelog generation
-- **Secret Scanning**: gitleaks detects accidentally committed secrets
-- **Dependency Analysis**: Scans for vulnerabilities, outdated packages, and license issues
-- **OpenSSF Scorecard**: Validates security best practices
 
 #### Handling Failed Checks
 
 If any checks fail in the CI pipeline:
 
 1. Review the CI error logs
-2. Run checks locally to reproduce the issues: `just verify`
-3. Make necessary fixes in your local environment
-4. Try auto-fixes first: `just lint-fix`
+2. Run checks locally to reproduce the issues:
+
+   ```shell
+   just lint-all
+   ```
+
+3. Auto-fix where possible:
+
+   ```shell
+   just lint-fix
+   ```
+
+4. Make necessary manual fixes
 5. Update your Pull Request
 6. Verify all checks pass in the updated PR
 
