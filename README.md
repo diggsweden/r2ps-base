@@ -13,7 +13,7 @@ The library is divided into 3 modules:
 This code is included in projects by the following maven dependencies
 
 ### Client
-
+d
 ```text
     <dependency>
       <groupId>se.digg.wallet</groupId>
