@@ -89,7 +89,7 @@ SPDX-License-Identifier: EUPL-1.2
     <!-- Code quality plugin versions -->
     <formatter-maven-plugin.version>2.27.0</formatter-maven-plugin.version>
     <maven-checkstyle-plugin.version>3.6.0</maven-checkstyle-plugin.version>
-    <checkstyle.version>10.26.1</checkstyle.version>
+    <checkstyle.version>12.2.0</checkstyle.version>
     <maven-pmd-plugin.version>3.28.0</maven-pmd-plugin.version>
     <spotbugs-maven-plugin.version>4.9.8.1</spotbugs-maven-plugin.version>
     <spotbugs.version>4.8.6</spotbugs.version>
