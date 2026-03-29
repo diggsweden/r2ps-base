@@ -512,9 +512,7 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
         ServiceResponseParser.parse(
             connector.requestService(serviceExchange),
             jweCodec.jweDecryptor(),
-            clientContextConfiguration,
-            serviceType.id(),
-            serviceTypeRegistry);
+            clientContextConfiguration.getServerVerifier());
 
     // If the service request was an error. Return the error response
     if (!serviceResult.success()) {
@@ -610,9 +608,7 @@ public class OpaqueR2PSClientApi implements R2PSClientApi {
           ServiceResponseParser.parse(
               connector.requestService(request),
               jweCodec.jweDecryptor(),
-              clientContextConfiguration,
-              serviceTypeId,
-              serviceTypeRegistry);
+              clientContextConfiguration.getServerVerifier());
 
       if (result.success()) {
         verifyServiceResult(result, nonce);
